@@ -141,6 +141,137 @@
   .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
   .empty { text-align: center; padding: 40px; color: #aaa; }
   .search-bar { padding: 8px 14px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 13px; width: 280px; }
+
+  /* ── MOBILE RESPONSIVE ───────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    /* Nav — brand upar, tabs neeche */
+    nav { flex-direction: column; align-items: stretch; }
+    .nav-brand { padding: 12px 16px; text-align: center; }
+    .nav-brand h1 { font-size: 16px; }
+    .nav-tabs { justify-content: space-around; overflow-x: auto; border-top: 1px solid rgba(255,255,255,0.1); }
+    .nav-tab { padding: 12px 10px; font-size: 11px; flex: 1; text-align: center; white-space: nowrap; }
+
+    /* Pages */
+    .page { padding: 12px; }
+
+    /* Cards */
+    .card-body { padding: 14px; }
+    .card-header { font-size: 13px; padding: 12px 14px; }
+
+    /* Bill header — single column */
+    .bill-header-grid { grid-template-columns: 1fr; gap: 10px; }
+    .bill-company h2 { font-size: 16px; }
+
+    /* Customer grid — single column */
+    .customer-grid { grid-template-columns: 1fr; gap: 10px; }
+
+    /* Meta rows */
+    .meta-row { flex-wrap: wrap; }
+    .meta-row label { min-width: 90px; }
+
+    /* Items table — card style on mobile */
+    .items-table thead { display: none; }
+    .items-table tbody tr {
+      display: block;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .items-table tbody tr:nth-child(even) { background: white; }
+    .items-table tbody td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 13px;
+    }
+    .items-table tbody td:last-child { border-bottom: none; }
+    .items-table tbody td::before {
+      content: attr(data-label);
+      font-weight: 700;
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      min-width: 80px;
+    }
+    .items-table tbody td input {
+      max-width: 160px;
+      text-align: right;
+    }
+    .items-table tbody td.amount-cell {
+      background: var(--green);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--blue-dark);
+      justify-content: flex-end;
+      border-bottom: none;
+    }
+    .items-table tbody td.amount-cell::before { content: 'Amount: '; }
+
+    /* Totals — single column */
+    .totals-grid { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Tax rows */
+    .tax-row { font-size: 12px; }
+    .tax-row.total { font-size: 14px; }
+
+    /* Stats grid — 2x2 */
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { padding: 14px; }
+    .stat-card .value { font-size: 18px; }
+
+    /* History table — card style */
+    .history-table thead { display: none; }
+    .history-table tbody tr {
+      display: block;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .history-table tbody td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 13px;
+    }
+    .history-table tbody td:last-child { border-bottom: none; justify-content: flex-end; }
+    .history-table tbody td::before {
+      content: attr(data-label);
+      font-weight: 700;
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    /* Search bar full width */
+    .search-bar { width: 100%; }
+
+    /* Buttons full width */
+    .btn-group { flex-direction: column; }
+    .btn-group .btn { width: 100%; text-align: center; }
+
+    /* GST toggle */
+    .gst-toggle { flex-wrap: wrap; gap: 8px; }
+
+    /* WA box */
+    .wa-box textarea { min-height: 120px; font-size: 12px; }
+  }
+
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .nav-tab { font-size: 10px; padding: 10px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -456,11 +587,11 @@ function addRow() {
   const idx = tbody.rows.length;
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="date" class="row-date left" oninput="calcTotals()"></td>
-    <td><input type="text" class="row-vehicle left" placeholder="Vehicle / No."></td>
-    <td><input type="text" class="row-desc left" placeholder="Route / Duty"></td>
-    <td><input type="number" class="row-rate" value="" placeholder="0" oninput="calcTotals()"></td>
-    <td><input type="number" class="row-qty" value="1" min="0" step="0.5" oninput="calcTotals()"></td>
+    <td data-label="Date"><input type="date" class="row-date left" oninput="calcTotals()"></td>
+    <td data-label="Vehicle"><input type="text" class="row-vehicle left" placeholder="Vehicle / No."></td>
+    <td data-label="Route"><input type="text" class="row-desc left" placeholder="Route / Duty"></td>
+    <td data-label="Rate (₹)"><input type="number" class="row-rate" value="" placeholder="0" oninput="calcTotals()"></td>
+    <td data-label="Qty"><input type="number" class="row-qty" value="1" min="0" step="0.5" oninput="calcTotals()"></td>
     <td class="amount-cell row-amt">₹0.00</td>
     <td class="no-print"><button class="btn-del" onclick="delRow(this)">✕</button></td>
   `;
@@ -643,15 +774,15 @@ function renderBills(bills) {
   if (!bills.length) { document.getElementById('bills-list').innerHTML = '<div class="empty">No bills yet. Create your first bill!</div>'; return; }
   const rows = bills.map(b => `
     <tr>
-      <td><strong>#${b.bill_no}</strong></td>
-      <td>${b.bill_date || '—'}</td>
-      <td>${b.cust_name || '—'}</td>
-      <td>${b.cust_guest || '—'}</td>
-      <td>${fmt(b.grand_total || 0)}</td>
-      <td>${fmt(b.advance || 0)}</td>
-      <td>${b.balance_due > 0 ? `<span class="badge badge-unpaid">${fmt(b.balance_due)}</span>` : '<span class="badge badge-paid">PAID ✅</span>'}</td>
-      <td>${b.is_gst ? '<span class="badge" style="background:#dbeafe;color:#1e40af">GST</span>' : '<span class="badge" style="background:#f3f4f6;color:#374151">Non-GST</span>'}</td>
-      <td><button class="btn btn-sm" style="background:#eee" onclick="deleteBill(${b.id})">🗑️</button></td>
+      <td data-label="Bill No."><strong>#${b.bill_no}</strong></td>
+      <td data-label="Date">${b.bill_date || '—'}</td>
+      <td data-label="Customer">${b.cust_name || '—'}</td>
+      <td data-label="Guest">${b.cust_guest || '—'}</td>
+      <td data-label="Grand Total">${fmt(b.grand_total || 0)}</td>
+      <td data-label="Advance">${fmt(b.advance || 0)}</td>
+      <td data-label="Balance">${b.balance_due > 0 ? `<span class="badge badge-unpaid">${fmt(b.balance_due)}</span>` : '<span class="badge badge-paid">PAID ✅</span>'}</td>
+      <td data-label="Type">${b.is_gst ? '<span class="badge" style="background:#dbeafe;color:#1e40af">GST</span>' : '<span class="badge" style="background:#f3f4f6;color:#374151">Non-GST</span>'}</td>
+      <td><button class="btn btn-sm" style="background:#fee;color:#c00" onclick="deleteBill(${b.id})">🗑️ Delete</button></td>
     </tr>
   `).join('');
 
