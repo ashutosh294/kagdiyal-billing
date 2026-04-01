@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kagdiyal Holidays — Billing Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --blue-dark: #1B3A6B;
+    --blue-mid: #2E75B6;
+    --blue-light: #D6E4F0;
+    --yellow: #FFF2CC;
+    --green: #E2EFDA;
+    --grey: #F2F2F2;
+    --red: #C00000;
+    --orange: #F4B942;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+  body { background: #f0f4f8; min-height: 100vh; }
+
+  /* NAV */
+  nav { background: var(--blue-dark); color: white; padding: 0; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .nav-brand { padding: 14px 24px; }
+  .nav-brand h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .nav-brand p { font-size: 11px; color: #a0c4e8; margin-top: 2px; }
+  .nav-tabs { display: flex; height: 100%; }
+  .nav-tab { padding: 18px 20px; cursor: pointer; font-size: 13px; color: #a0c4e8; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .nav-tab:hover { color: white; background: rgba(255,255,255,0.08); }
+  .nav-tab.active { color: white; border-bottom-color: var(--orange); }
+
+  /* MAIN */
+  .page { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+  .card-header { background: var(--blue-dark); color: white; padding: 14px 20px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 20px; }
+
+  /* BILL HEADER */
+  .bill-header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .bill-company { background: var(--blue-dark); color: white; border-radius: 8px; padding: 16px 20px; text-align: center; }
+  .bill-company h2 { font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+  .bill-company p { font-size: 11px; color: #a0c4e8; margin-top: 4px; }
+  .bill-meta { background: var(--grey); border-radius: 8px; padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .meta-row { display: flex; gap: 12px; align-items: center; }
+  .meta-row label { font-size: 12px; font-weight: 700; color: #555; min-width: 80px; }
+  .meta-row input, .meta-row select { flex: 1; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: white; }
+
+  /* CUSTOMER SECTION */
+  .customer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 12px; font-weight: 700; color: #555; }
+  .form-group input, .form-group select, .form-group textarea { padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 13px; transition: border 0.2s; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--blue-mid); }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+
+  /* ITEMS TABLE */
+  .items-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .items-table th { background: var(--blue-mid); color: white; padding: 10px 8px; text-align: center; font-size: 12px; }
+  .items-table td { padding: 6px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  .items-table tr:nth-child(even) td { background: var(--grey); }
+  .items-table input { width: 100%; padding: 5px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: center; }
+  .items-table input.left { text-align: left; }
+  .items-table .amount-cell { text-align: right; font-weight: 600; color: var(--blue-dark); padding-right: 8px; }
+  .btn-del { background: #fee; border: 1px solid #fcc; color: var(--red); border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+  .btn-del:hover { background: #fcc; }
+
+  /* TOTALS */
+  .totals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .bank-section { background: var(--grey); border-radius: 8px; padding: 16px; }
+  .bank-section h4 { font-size: 13px; font-weight: 700; color: var(--blue-dark); margin-bottom: 10px; border-bottom: 2px solid var(--blue-mid); padding-bottom: 6px; }
+  .bank-row { display: flex; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .bank-row span:first-child { color: #666; min-width: 80px; }
+  .bank-row span:last-child { font-weight: 600; color: #222; }
+  .tax-section { background: var(--grey); border-radius: 8px; padding: 16px; }
+  .tax-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #ddd; font-size: 13px; }
+  .tax-row:last-child { border-bottom: none; }
+  .tax-row.total { background: var(--blue-dark); color: white; margin: 8px -16px -16px; padding: 12px 16px; border-radius: 0 0 8px 8px; font-size: 15px; font-weight: 800; }
+  .tax-row.balance { background: var(--red); color: white; margin: 0 -16px; padding: 10px 16px; font-size: 14px; font-weight: 700; }
+  .tax-input { width: 70px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: center; }
+
+  /* GST TOGGLE */
+  .gst-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .toggle-btn { padding: 7px 18px; border-radius: 20px; border: 2px solid var(--blue-mid); cursor: pointer; font-size: 13px; font-weight: 600; background: white; color: var(--blue-mid); transition: all 0.2s; }
+  .toggle-btn.active { background: var(--blue-mid); color: white; }
+
+  /* BUTTONS */
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+  .btn-primary { background: var(--blue-dark); color: white; }
+  .btn-primary:hover { background: var(--blue-mid); }
+  .btn-success { background: #22c55e; color: white; }
+  .btn-success:hover { background: #16a34a; }
+  .btn-warning { background: var(--orange); color: #333; }
+  .btn-warning:hover { background: #e0a030; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* RUPEES IN WORDS */
+  .words-box { background: var(--yellow); border: 1px solid #e0c800; border-radius: 6px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: var(--blue-dark); margin-top: 10px; }
+
+  /* WHATSAPP */
+  .wa-box { background: #e7f8ee; border: 1px solid #86efac; border-radius: 8px; padding: 14px; margin-top: 12px; }
+  .wa-box h4 { color: #166534; font-size: 13px; margin-bottom: 8px; }
+  .wa-box textarea { width: 100%; border: 1px solid #86efac; border-radius: 6px; padding: 8px; font-size: 12px; background: white; resize: vertical; min-height: 100px; }
+  .btn-wa { background: #25D366; color: white; }
+  .btn-wa:hover { background: #128C7E; }
+
+  /* HISTORY TABLE */
+  .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .history-table th { background: var(--blue-dark); color: white; padding: 10px 12px; text-align: left; font-size: 12px; }
+  .history-table td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .history-table tr:hover td { background: var(--blue-light); }
+  .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-paid { background: #dcfce7; color: #166534; }
+  .badge-unpaid { background: #fee2e2; color: #991b1b; }
+  .badge-partial { background: #fef9c3; color: #854d0e; }
+
+  /* DASHBOARD */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid var(--blue-mid); }
+  .stat-card h3 { font-size: 12px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 22px; font-weight: 800; color: var(--blue-dark); }
+  .stat-card .sub { font-size: 11px; color: #888; margin-top: 4px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { background: #22c55e; }
+  .toast.error { background: var(--red); }
+
+  /* PRINT */
+  @media print {
+    nav, .btn-group, .gst-toggle, .wa-box, .no-print { display: none !important; }
+    body { background: white; }
+    .page { padding: 0; max-width: 100%; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+  }
+
+  .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+  .empty { text-align: center; padding: 40px; color: #aaa; }
+  .search-bar { padding: 8px 14px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 13px; width: 280px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <h1>🏖️ Kagdiyal Holidays</h1>
+    <p>Billing Management System</p>
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showPage('new-bill')">🧾 New Bill</div>
+    <div class="nav-tab" onclick="showPage('history')">📋 Bill History</div>
+    <div class="nav-tab" onclick="showPage('customers')">👥 Customers</div>
+    <div class="nav-tab" onclick="showPage('dashboard')">📊 Dashboard</div>
+  </div>
+</nav>
+
+<!-- ══════════════ NEW BILL PAGE ══════════════ -->
+<div id="page-new-bill" class="page active">
+
+  <!-- GST Toggle -->
+  <div class="gst-toggle no-print">
+    <span style="font-weight:700;color:#333;font-size:13px;">Bill Type:</span>
+    <button class="toggle-btn active" id="btn-gst" onclick="setGST(true)">GST Bill</button>
+    <button class="toggle-btn" id="btn-nongst" onclick="setGST(false)">Non-GST Bill</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">🏢 Company & Bill Info</div>
+    <div class="card-body">
+      <div class="bill-header-grid">
+        <div class="bill-company">
+          <h2>KAGDIYAL HOLIDAYS</h2>
+          <p>24X7 PAN INDIA TOUR AND LOCAL RENTAL IN DELHI</p>
+          <p style="margin-top:8px;font-size:10px;color:#ccc;">GSTIN: 07OGUPS2098E1ZF | PAN: OGUPS2098E</p>
+        </div>
+        <div class="bill-meta">
+          <div class="meta-row">
+            <label>Bill No.</label>
+            <input type="number" id="bill-no" value="55" style="max-width:100px;">
+          </div>
+          <div class="meta-row">
+            <label>Bill Date</label>
+            <input type="date" id="bill-date">
+          </div>
+          <div class="meta-row">
+            <label>Customer</label>
+            <select id="customer-select" onchange="fillCustomer()">
+              <option value="">-- Select or type below --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Details -->
+      <div class="customer-grid">
+        <div class="form-group">
+          <label>Customer / Company Name</label>
+          <input type="text" id="cust-name" placeholder="e.g. IGRMS Bhopal">
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <input type="text" id="cust-address" placeholder="City, State">
+        </div>
+        <div class="form-group">
+          <label>GSTIN No.</label>
+          <input type="text" id="cust-gstin" placeholder="Leave blank if not applicable">
+        </div>
+        <div class="form-group">
+          <label>Guest / Contact Person</label>
+          <input type="text" id="cust-guest" placeholder="e.g. Prof. Amitabh Pandey">
+        </div>
+        <div class="form-group">
+          <label>State Code</label>
+          <input type="text" id="cust-state" placeholder="e.g. 23">
+        </div>
+        <div class="form-group">
+          <label>Booked By</label>
+          <input type="text" id="cust-booked" placeholder="Name of booking person">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items Table -->
+  <div class="card">
+    <div class="card-header">🚗 Trip Details</div>
+    <div class="card-body">
+      <table class="items-table" id="items-table">
+        <thead>
+          <tr>
+            <th style="width:90px">Date</th>
+            <th style="width:130px">Vehicle</th>
+            <th>Route / Duty Description</th>
+            <th style="width:100px">Rate (₹)</th>
+            <th style="width:60px">Qty</th>
+            <th style="width:110px">Amount (₹)</th>
+            <th style="width:40px" class="no-print"></th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+      <div style="margin-top:12px;" class="no-print">
+        <button class="btn btn-primary btn-sm" onclick="addRow()">+ Add Row</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="card">
+    <div class="card-header">💰 Summary</div>
+    <div class="card-body">
+      <div class="totals-grid">
+        <!-- Bank Details -->
+        <div class="bank-section">
+          <h4>🏦 Our Bank Details</h4>
+          <div class="bank-row"><span>Bank:</span><span>YES BANK</span></div>
+          <div class="bank-row"><span>A/C Name:</span><span>KAGDIYAL HOLIDAYS</span></div>
+          <div class="bank-row"><span>A/C No.:</span><span>004463300002943</span></div>
+          <div class="bank-row"><span>Branch:</span><span>Laxmi Nagar, Delhi</span></div>
+          <div class="bank-row"><span>IFSC:</span><span>YESB0000044</span></div>
+        </div>
+
+        <!-- Tax & Total -->
+        <div class="tax-section">
+          <div class="tax-row">
+            <span>Total Before Tax</span>
+            <strong id="subtotal">₹0.00</strong>
+          </div>
+          <div class="tax-row" id="cgst-row">
+            <span>CGST % → <input class="tax-input" id="cgst-pct" type="number" value="5" min="0" max="28" oninput="calcTotals()"></span>
+            <span id="cgst-amt">₹0.00</span>
+          </div>
+          <div class="tax-row" id="sgst-row">
+            <span>SGST % → <input class="tax-input" id="sgst-pct" type="number" value="0" min="0" max="28" oninput="calcTotals()"></span>
+            <span id="sgst-amt">₹0.00</span>
+          </div>
+          <div class="tax-row" id="igst-row">
+            <span>IGST % → <input class="tax-input" id="igst-pct" type="number" value="0" min="0" max="28" oninput="calcTotals()"></span>
+            <span id="igst-amt">₹0.00</span>
+          </div>
+          <div class="tax-row">
+            <span>Pkg / Toll / State Tax</span>
+            <input class="tax-input" id="extra-charges" type="number" value="0" oninput="calcTotals()">
+          </div>
+          <div class="tax-row">
+            <span>(-) Advance Received</span>
+            <input class="tax-input" id="advance" type="number" value="0" oninput="calcTotals()">
+          </div>
+          <div class="tax-row total">
+            <span>GRAND TOTAL</span>
+            <span id="grand-total">₹0.00</span>
+          </div>
+          <div class="tax-row balance">
+            <span>Balance Due</span>
+            <span id="balance-due">₹0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="words-box" id="words-box">Rupees in Words: —</div>
+
+      <!-- WhatsApp -->
+      <div class="wa-box no-print">
+        <h4>📱 WhatsApp Message</h4>
+        <textarea id="wa-msg" readonly></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn btn-wa btn-sm" onclick="openWhatsApp()">Send on WhatsApp</button>
+          <button class="btn btn-sm" style="background:#eee;" onclick="copyWA()">Copy Message</button>
+        </div>
+      </div>
+
+      <div class="btn-group no-print">
+        <button class="btn btn-success" onclick="saveBill()">💾 Save Bill</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print Bill</button>
+        <button class="btn btn-warning" onclick="resetBill()">🔄 New Bill</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ HISTORY PAGE ══════════════ -->
+<div id="page-history" class="page">
+  <div class="card">
+    <div class="card-header">📋 Bill History</div>
+    <div class="card-body">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <input class="search-bar" type="text" id="search-bills" placeholder="🔍 Search by customer, bill no..." oninput="filterBills()">
+        <button class="btn btn-primary btn-sm" onclick="loadBills()">↻ Refresh</button>
+      </div>
+      <div id="bills-list"><div class="loading">Loading bills...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CUSTOMERS PAGE ══════════════ -->
+<div id="page-customers" class="page">
+  <div class="card">
+    <div class="card-header">👥 Customer Database</div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group"><label>Customer Name</label><input type="text" id="new-cust-name" placeholder="Full name"></div>
+        <div class="form-group"><label>Company Name</label><input type="text" id="new-cust-company" placeholder="Company (optional)"></div>
+        <div class="form-group"><label>Address</label><input type="text" id="new-cust-address" placeholder="City, State"></div>
+        <div class="form-group"><label>GSTIN</label><input type="text" id="new-cust-gstin" placeholder="GSTIN (optional)"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="new-cust-phone" placeholder="Mobile number"></div>
+        <div class="form-group"><label>Email</label><input type="text" id="new-cust-email" placeholder="Email (optional)"></div>
+      </div>
+      <button class="btn btn-success" onclick="saveCustomer()">+ Add Customer</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">All Customers</div>
+    <div class="card-body" id="customers-list"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD PAGE ══════════════ -->
+<div id="page-dashboard" class="page">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <h3>Total Bills</h3>
+      <div class="value" id="stat-bills">—</div>
+      <div class="sub">All time</div>
+    </div>
+    <div class="stat-card" style="border-color:#22c55e">
+      <h3>Total Revenue</h3>
+      <div class="value" id="stat-revenue">—</div>
+      <div class="sub">Grand total collected</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--orange)">
+      <h3>This Month</h3>
+      <div class="value" id="stat-month">—</div>
+      <div class="sub">Current month bills</div>
+    </div>
+    <div class="stat-card" style="border-color:var(--red)">
+      <h3>Total Customers</h3>
+      <div class="value" id="stat-customers">—</div>
+      <div class="sub">In database</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">📊 Recent Bills</div>
+    <div class="card-body" id="dashboard-recent"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SUPABASE INIT ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://ckcjzvfnkckuesqqmuks.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY2p6dmZua2NrdWVzcXFtdWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzQ5MjQsImV4cCI6MjA5MDYxMDkyNH0.Hd0al1x3a7-refUXc8RVoBmyEBq6sQ9ovHbYJKVlWAM';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let isGST = true;
+let allBills = [];
+let allCustomers = [];
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+window.onload = async () => {
+  setToday();
+  addRow(); addRow(); addRow();
+  await setupDB();
+  await loadCustomers();
+  await loadBills();
+  await loadDashboard();
+};
+
+async function setupDB() {
+  // Create tables if not exist via SQL
+  await sb.rpc('setup_tables').catch(() => {}); // ignore if rpc not exists
+  
+  // Try creating bills table
+  const { error: e1 } = await sb.from('bills').select('id').limit(1);
+  if (e1 && e1.code === '42P01') {
+    // Table doesn't exist - show message
+    showToast('Please run the SQL setup first!', 'error');
+  }
+}
+
+function setToday() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('bill-date').value = today;
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.target.classList.add('active');
+  if (page === 'history') loadBills();
+  if (page === 'customers') loadCustomers();
+  if (page === 'dashboard') loadDashboard();
+}
+
+// ── GST TOGGLE ─────────────────────────────────────────────────────────────
+function setGST(val) {
+  isGST = val;
+  document.getElementById('btn-gst').classList.toggle('active', val);
+  document.getElementById('btn-nongst').classList.toggle('active', !val);
+  document.getElementById('cgst-row').style.display = val ? '' : 'none';
+  document.getElementById('sgst-row').style.display = val ? '' : 'none';
+  document.getElementById('igst-row').style.display = val ? '' : 'none';
+  calcTotals();
+}
+
+// ── ROWS ───────────────────────────────────────────────────────────────────
+function addRow() {
+  const tbody = document.getElementById('items-body');
+  const idx = tbody.rows.length;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" class="row-date left" oninput="calcTotals()"></td>
+    <td><input type="text" class="row-vehicle left" placeholder="Vehicle / No."></td>
+    <td><input type="text" class="row-desc left" placeholder="Route / Duty"></td>
+    <td><input type="number" class="row-rate" value="" placeholder="0" oninput="calcTotals()"></td>
+    <td><input type="number" class="row-qty" value="1" min="0" step="0.5" oninput="calcTotals()"></td>
+    <td class="amount-cell row-amt">₹0.00</td>
+    <td class="no-print"><button class="btn-del" onclick="delRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function delRow(btn) {
+  btn.closest('tr').remove();
+  calcTotals();
+}
+
+// ── CALCULATIONS ───────────────────────────────────────────────────────────
+function calcTotals() {
+  let subtotal = 0;
+  document.querySelectorAll('#items-body tr').forEach(tr => {
+    const rate = parseFloat(tr.querySelector('.row-rate')?.value) || 0;
+    const qty  = parseFloat(tr.querySelector('.row-qty')?.value)  || 0;
+    const amt  = rate * qty;
+    tr.querySelector('.row-amt').textContent = fmt(amt);
+    subtotal += amt;
+  });
+
+  const cgst = isGST ? subtotal * (parseFloat(document.getElementById('cgst-pct').value)||0) / 100 : 0;
+  const sgst = isGST ? subtotal * (parseFloat(document.getElementById('sgst-pct').value)||0) / 100 : 0;
+  const igst = isGST ? subtotal * (parseFloat(document.getElementById('igst-pct').value)||0) / 100 : 0;
+  const extra   = parseFloat(document.getElementById('extra-charges').value) || 0;
+  const advance = parseFloat(document.getElementById('advance').value) || 0;
+  const grand   = subtotal + cgst + sgst + igst + extra;
+  const balance = grand - advance;
+
+  document.getElementById('subtotal').textContent   = fmt(subtotal);
+  document.getElementById('cgst-amt').textContent   = fmt(cgst);
+  document.getElementById('sgst-amt').textContent   = fmt(sgst);
+  document.getElementById('igst-amt').textContent   = fmt(igst);
+  document.getElementById('grand-total').textContent = fmt(grand);
+  document.getElementById('balance-due').textContent = balance <= 0 ? 'PAID ✅' : fmt(balance);
+  document.getElementById('words-box').textContent   = 'Rupees in Words: ' + numToWords(Math.round(grand)) + ' Only /-';
+
+  updateWA(subtotal, grand, balance);
+}
+
+function fmt(n) {
+  return '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── NUMBER TO WORDS ────────────────────────────────────────────────────────
+function numToWords(n) {
+  if (n === 0) return 'Zero';
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
+    'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function below100(n) {
+    if (n < 20) return ones[n];
+    return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+  }
+  function below1000(n) {
+    if (n < 100) return below100(n);
+    return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + below100(n%100) : '');
+  }
+  let result = '';
+  if (n >= 10000000) { result += below1000(Math.floor(n/10000000)) + ' Crore '; n %= 10000000; }
+  if (n >= 100000)   { result += below1000(Math.floor(n/100000))   + ' Lakh ';  n %= 100000; }
+  if (n >= 1000)     { result += below1000(Math.floor(n/1000))     + ' Thousand '; n %= 1000; }
+  if (n > 0)         { result += below1000(n); }
+  return result.trim();
+}
+
+// ── WHATSAPP ───────────────────────────────────────────────────────────────
+function updateWA(subtotal, grand, balance) {
+  const cust  = document.getElementById('cust-name').value || 'Customer';
+  const billNo= document.getElementById('bill-no').value;
+  const date  = document.getElementById('bill-date').value;
+  const msg = `🙏 *Kagdiyal Holidays*\n\nDear ${cust},\n\nYour Bill No. *${billNo}* dated *${date}* is ready.\n\n💰 Amount: *${fmt(grand)}*\n${balance > 0 ? `🔴 Balance Due: *${fmt(balance)}*` : '✅ *FULLY PAID*'}\n\n🏦 Payment:\nYES BANK | A/C: 004463300002943\nIFSC: YESB0000044\n\nThank you for choosing Kagdiyal Holidays! 🚗`;
+  document.getElementById('wa-msg').value = msg;
+}
+
+function openWhatsApp() {
+  const msg = document.getElementById('wa-msg').value;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function copyWA() {
+  navigator.clipboard.writeText(document.getElementById('wa-msg').value);
+  showToast('Message copied!', 'success');
+}
+
+// ── CUSTOMER AUTOFILL ──────────────────────────────────────────────────────
+function fillCustomer() {
+  const sel = document.getElementById('customer-select');
+  const cust = allCustomers.find(c => c.id == sel.value);
+  if (!cust) return;
+  document.getElementById('cust-name').value    = cust.company_name || cust.name || '';
+  document.getElementById('cust-address').value = cust.address || '';
+  document.getElementById('cust-gstin').value   = cust.gstin || '';
+  document.getElementById('cust-guest').value   = cust.name || '';
+  document.getElementById('cust-state').value   = cust.state_code || '';
+}
+
+// ── SAVE BILL ──────────────────────────────────────────────────────────────
+async function saveBill() {
+  const items = [];
+  document.querySelectorAll('#items-body tr').forEach(tr => {
+    const rate = parseFloat(tr.querySelector('.row-rate')?.value) || 0;
+    const qty  = parseFloat(tr.querySelector('.row-qty')?.value)  || 0;
+    if (rate || qty) {
+      items.push({
+        date:    tr.querySelector('.row-date')?.value || '',
+        vehicle: tr.querySelector('.row-vehicle')?.value || '',
+        desc:    tr.querySelector('.row-desc')?.value || '',
+        rate, qty, amount: rate * qty
+      });
+    }
+  });
+
+  const subtotal = items.reduce((s, i) => s + i.amount, 0);
+  const cgst = isGST ? subtotal * (parseFloat(document.getElementById('cgst-pct').value)||0)/100 : 0;
+  const sgst = isGST ? subtotal * (parseFloat(document.getElementById('sgst-pct').value)||0)/100 : 0;
+  const igst = isGST ? subtotal * (parseFloat(document.getElementById('igst-pct').value)||0)/100 : 0;
+  const extra   = parseFloat(document.getElementById('extra-charges').value)||0;
+  const advance = parseFloat(document.getElementById('advance').value)||0;
+  const grand   = subtotal + cgst + sgst + igst + extra;
+
+  const bill = {
+    bill_no:       parseInt(document.getElementById('bill-no').value),
+    bill_date:     document.getElementById('bill-date').value,
+    is_gst:        isGST,
+    cust_name:     document.getElementById('cust-name').value,
+    cust_address:  document.getElementById('cust-address').value,
+    cust_gstin:    document.getElementById('cust-gstin').value,
+    cust_guest:    document.getElementById('cust-guest').value,
+    cust_state:    document.getElementById('cust-state').value,
+    cust_booked:   document.getElementById('cust-booked').value,
+    items:         items,
+    subtotal, cgst, sgst, igst,
+    extra_charges: extra,
+    advance,
+    grand_total:   grand,
+    balance_due:   Math.max(0, grand - advance),
+    cgst_pct:      parseFloat(document.getElementById('cgst-pct').value)||0,
+    sgst_pct:      parseFloat(document.getElementById('sgst-pct').value)||0,
+    igst_pct:      parseFloat(document.getElementById('igst-pct').value)||0,
+  };
+
+  const { error } = await sb.from('bills').insert([bill]);
+  if (error) {
+    showToast('Error saving: ' + error.message, 'error');
+  } else {
+    showToast('Bill saved successfully! ✅', 'success');
+    // Auto increment bill number
+    document.getElementById('bill-no').value = parseInt(document.getElementById('bill-no').value) + 1;
+  }
+}
+
+function resetBill() {
+  if (!confirm('Start a new bill? Current data will be cleared.')) return;
+  document.getElementById('cust-name').value = '';
+  document.getElementById('cust-address').value = '';
+  document.getElementById('cust-gstin').value = '';
+  document.getElementById('cust-guest').value = '';
+  document.getElementById('cust-state').value = '';
+  document.getElementById('cust-booked').value = '';
+  document.getElementById('customer-select').value = '';
+  document.getElementById('advance').value = 0;
+  document.getElementById('extra-charges').value = 0;
+  document.getElementById('items-body').innerHTML = '';
+  addRow(); addRow(); addRow();
+  setToday();
+  calcTotals();
+}
+
+// ── LOAD BILLS ─────────────────────────────────────────────────────────────
+async function loadBills() {
+  const { data, error } = await sb.from('bills').select('*').order('created_at', { ascending: false });
+  if (error) { document.getElementById('bills-list').innerHTML = `<div class="empty">Error: ${error.message}<br><br><small>Please run the SQL setup in Supabase first.</small></div>`; return; }
+  allBills = data || [];
+  renderBills(allBills);
+}
+
+function renderBills(bills) {
+  if (!bills.length) { document.getElementById('bills-list').innerHTML = '<div class="empty">No bills yet. Create your first bill!</div>'; return; }
+  const rows = bills.map(b => `
+    <tr>
+      <td><strong>#${b.bill_no}</strong></td>
+      <td>${b.bill_date || '—'}</td>
+      <td>${b.cust_name || '—'}</td>
+      <td>${b.cust_guest || '—'}</td>
+      <td>${fmt(b.grand_total || 0)}</td>
+      <td>${fmt(b.advance || 0)}</td>
+      <td>${b.balance_due > 0 ? `<span class="badge badge-unpaid">${fmt(b.balance_due)}</span>` : '<span class="badge badge-paid">PAID ✅</span>'}</td>
+      <td>${b.is_gst ? '<span class="badge" style="background:#dbeafe;color:#1e40af">GST</span>' : '<span class="badge" style="background:#f3f4f6;color:#374151">Non-GST</span>'}</td>
+      <td><button class="btn btn-sm" style="background:#eee" onclick="deleteBill(${b.id})">🗑️</button></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('bills-list').innerHTML = `
+    <table class="history-table">
+      <thead><tr>
+        <th>Bill No.</th><th>Date</th><th>Customer</th><th>Guest</th>
+        <th>Grand Total</th><th>Advance</th><th>Balance</th><th>Type</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function filterBills() {
+  const q = document.getElementById('search-bills').value.toLowerCase();
+  renderBills(allBills.filter(b =>
+    (b.cust_name||'').toLowerCase().includes(q) ||
+    String(b.bill_no).includes(q) ||
+    (b.cust_guest||'').toLowerCase().includes(q)
+  ));
+}
+
+async function deleteBill(id) {
+  if (!confirm('Delete this bill permanently?')) return;
+  const { error } = await sb.from('bills').delete().eq('id', id);
+  if (error) showToast('Error: ' + error.message, 'error');
+  else { showToast('Bill deleted', 'success'); loadBills(); }
+}
+
+// ── CUSTOMERS ──────────────────────────────────────────────────────────────
+async function loadCustomers() {
+  const { data, error } = await sb.from('customers').select('*').order('name');
+  if (error) { document.getElementById('customers-list').innerHTML = `<div class="empty">Error: ${error.message}</div>`; return; }
+  allCustomers = data || [];
+
+  // Populate dropdown
+  const sel = document.getElementById('customer-select');
+  sel.innerHTML = '<option value="">-- Select customer --</option>' +
+    allCustomers.map(c => `<option value="${c.id}">${c.name}${c.company_name ? ' ('+c.company_name+')' : ''}</option>`).join('');
+
+  if (!allCustomers.length) { document.getElementById('customers-list').innerHTML = '<div class="empty">No customers yet.</div>'; return; }
+  const rows = allCustomers.map(c => `
+    <tr>
+      <td>${c.name||'—'}</td>
+      <td>${c.company_name||'—'}</td>
+      <td>${c.address||'—'}</td>
+      <td>${c.gstin||'—'}</td>
+      <td>${c.phone||'—'}</td>
+      <td><button class="btn btn-sm" style="background:#fee;color:#c00" onclick="deleteCustomer(${c.id})">🗑️</button></td>
+    </tr>
+  `).join('');
+  document.getElementById('customers-list').innerHTML = `
+    <table class="history-table">
+      <thead><tr><th>Name</th><th>Company</th><th>Address</th><th>GSTIN</th><th>Phone</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function saveCustomer() {
+  const cust = {
+    name:         document.getElementById('new-cust-name').value,
+    company_name: document.getElementById('new-cust-company').value,
+    address:      document.getElementById('new-cust-address').value,
+    gstin:        document.getElementById('new-cust-gstin').value,
+    phone:        document.getElementById('new-cust-phone').value,
+    email:        document.getElementById('new-cust-email').value,
+  };
+  if (!cust.name) { showToast('Customer name required!', 'error'); return; }
+  const { error } = await sb.from('customers').insert([cust]);
+  if (error) showToast('Error: ' + error.message, 'error');
+  else {
+    showToast('Customer added! ✅', 'success');
+    ['name','company','address','gstin','phone','email'].forEach(f =>
+      document.getElementById('new-cust-'+f).value = '');
+    loadCustomers();
+  }
+}
+
+async function deleteCustomer(id) {
+  if (!confirm('Delete this customer?')) return;
+  const { error } = await sb.from('customers').delete().eq('id', id);
+  if (error) showToast('Error: ' + error.message, 'error');
+  else { showToast('Customer deleted', 'success'); loadCustomers(); }
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const { data: bills } = await sb.from('bills').select('*').order('created_at', { ascending: false });
+  const { data: custs } = await sb.from('customers').select('id');
+  const b = bills || [];
+  const now = new Date();
+  const thisMonth = b.filter(x => new Date(x.bill_date).getMonth() === now.getMonth() && new Date(x.bill_date).getFullYear() === now.getFullYear());
+  const revenue = b.reduce((s, x) => s + (x.grand_total||0), 0);
+
+  document.getElementById('stat-bills').textContent    = b.length;
+  document.getElementById('stat-revenue').textContent  = fmt(revenue);
+  document.getElementById('stat-month').textContent    = thisMonth.length + ' bills';
+  document.getElementById('stat-customers').textContent= (custs||[]).length;
+
+  const recent = b.slice(0,10);
+  if (!recent.length) { document.getElementById('dashboard-recent').innerHTML = '<div class="empty">No bills yet.</div>'; return; }
+  document.getElementById('dashboard-recent').innerHTML = `
+    <table class="history-table">
+      <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance</th></tr></thead>
+      <tbody>${recent.map(b => `
+        <tr>
+          <td>#${b.bill_no}</td>
+          <td>${b.bill_date||'—'}</td>
+          <td>${b.cust_name||'—'}</td>
+          <td>${fmt(b.grand_total||0)}</td>
+          <td>${b.balance_due>0 ? `<span class="badge badge-unpaid">${fmt(b.balance_due)}</span>` : '<span class="badge badge-paid">PAID</span>'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+</script>
+</body>
+</html>
