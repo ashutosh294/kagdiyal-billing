@@ -371,7 +371,11 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
           <p style="margin-top:5px;font-size:9px;color:#aad4f5;">GSTIN: 07OGUPS2098E1ZF &nbsp;|&nbsp; PAN: OGUPS2098E</p>
         </div>
         <div class="bill-meta-box">
-          <div class="meta-row"><label>Bill No.</label><input type="number" id="bill-no" value="55" style="max-width:90px;"></div>
+          <div class="meta-row">
+            <label>Bill No.</label>
+            <input type="number" id="bill-no" value="1" style="max-width:80px;">
+            <button onclick="toggleBillNoEdit()" id="bill-no-edit-btn" title="Manual edit" style="padding:5px 9px;border:1.5px solid #ddd;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;">✏️</button>
+          </div>
           <div class="meta-row"><label>Date</label><input type="date" id="bill-date"></div>
           <div class="meta-row"><label>Customer</label>
             <select id="cust-select" onchange="fillCustomer()" style="flex:1">
@@ -620,9 +624,36 @@ async function fetchNextBillNo(){
   el.readOnly=true;
   el.style.background='#eef2f7';
   el.style.color='#555';
-  el.title='Auto-set from database';
+  el.title='Auto-set — click ✏️ to edit manually';
   const{data,error}=await sb.from('bills').select('bill_no').order('bill_no',{ascending:false}).limit(1);
-  el.value=(!error&&data&&data.length)?(data[0].bill_no+1):1;
+  if(!error && data){
+    el.value = data.length ? (data[0].bill_no + 1) : 1;
+  }
+  // reset edit button style
+  const btn=document.getElementById('bill-no-edit-btn');
+  btn.textContent='✏️';
+  btn.title='Click to edit manually';
+  btn.style.background='#fff';
+}
+
+let billNoManual=false;
+function toggleBillNoEdit(){
+  const el=document.getElementById('bill-no');
+  const btn=document.getElementById('bill-no-edit-btn');
+  billNoManual=!billNoManual;
+  if(billNoManual){
+    el.readOnly=false;
+    el.style.background='#fffbe6';
+    el.style.color='#333';
+    el.focus();el.select();
+    btn.textContent='🔒';
+    btn.title='Lock — switch back to auto';
+    btn.style.background='#fef9c3';
+    toast('Manual mode — enter bill number','');
+  } else {
+    fetchNextBillNo();
+    toast('Auto mode restored','success');
+  }
 }
 
 /* ── NAV ── */
