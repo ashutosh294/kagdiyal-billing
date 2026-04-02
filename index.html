@@ -182,6 +182,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   .nav-tab::before{font-size:18px;display:block;}
   .nav-tab[onclick*="new-bill"]::before{content:'🧾';}
   .nav-tab[onclick*="history"]::before{content:'📋';}
+  .nav-tab[onclick*="dues"]::before{content:'💰';}
   .nav-tab[onclick*="customers"]::before{content:'👥';}
   .nav-tab[onclick*="dashboard"]::before{content:'📊';}
 
@@ -343,6 +344,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
     <div class="nav-tabs">
       <div class="nav-tab active" onclick="showPage('new-bill',this)">New Bill</div>
       <div class="nav-tab" onclick="showPage('history',this)">History</div>
+      <div class="nav-tab" onclick="showPage('dues',this)">💰 Dues</div>
       <div class="nav-tab" onclick="showPage('customers',this)">Customers</div>
       <div class="nav-tab" onclick="showPage('dashboard',this)">Dashboard</div>
     </div>
@@ -474,6 +476,25 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   </div>
 </div>
 
+<!-- ══ DUES ══ -->
+<div id="page-dues" class="page">
+  <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card" style="border-color:var(--rd)"><h3>Unpaid Bills</h3><div class="val" id="due-count">—</div><div class="sub">Pending payments</div></div>
+    <div class="stat-card" style="border-color:var(--or)"><h3>Total Outstanding</h3><div class="val" id="due-total">—</div><div class="sub">Balance due</div></div>
+    <div class="stat-card" style="border-color:#16a34a"><h3>Oldest Due</h3><div class="val" id="due-oldest" style="font-size:14px;">—</div><div class="sub">Earliest unpaid bill</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">💰 Outstanding Dues</div>
+    <div class="card-bd">
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <input class="search-bar" type="text" id="due-srch" placeholder="🔍 Search customer, bill no..." oninput="filterDues()">
+        <button class="btn btn-primary btn-sm no-print" onclick="loadDues()">↻ Refresh</button>
+      </div>
+      <div id="dues-list"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ CUSTOMERS ══ -->
 <div id="page-customers" class="page">
   <div class="card">
@@ -590,7 +611,19 @@ window.onload = async () => {
   await loadCusts();
   await loadBills();
   await loadDash();
+  await fetchNextBillNo();
 };
+
+/* ── AUTO BILL NUMBER ── */
+async function fetchNextBillNo(){
+  const el=document.getElementById('bill-no');
+  el.readOnly=true;
+  el.style.background='#eef2f7';
+  el.style.color='#555';
+  el.title='Auto-set from database';
+  const{data,error}=await sb.from('bills').select('bill_no').order('bill_no',{ascending:false}).limit(1);
+  el.value=(!error&&data&&data.length)?(data[0].bill_no+1):1;
+}
 
 /* ── NAV ── */
 function showPage(p, el) {
@@ -601,6 +634,7 @@ function showPage(p, el) {
   if(p==='history') loadBills();
   if(p==='customers') loadCusts();
   if(p==='dashboard') loadDash();
+  if(p==='dues') loadDues();
 }
 
 /* ── GST TOGGLE ── */
@@ -693,6 +727,16 @@ function fillCustomer(){
 
 /* ── SAVE BILL ── */
 async function saveBill(){
+  const billNo=parseInt(document.getElementById('bill-no').value);
+  if(!billNo){toast('Bill number missing!','error');return;}
+
+  // Duplicate check
+  const{data:dup}=await sb.from('bills').select('id').eq('bill_no',billNo).limit(1);
+  if(dup&&dup.length){
+    toast(`⚠️ Bill #${billNo} already exists! Check history.`,'error');
+    return;
+  }
+
   const items=[];
   document.querySelectorAll('#tbody tr').forEach(tr=>{
     const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
@@ -707,7 +751,7 @@ async function saveBill(){
   const ad=parseFloat(document.getElementById('adv').value)||0;
   const gr=sub+cg+sg+ig+ex;
   const {error}=await sb.from('bills').insert([{
-    bill_no:parseInt(document.getElementById('bill-no').value),
+    bill_no:billNo,
     bill_date:document.getElementById('bill-date').value,
     is_gst:isGST,
     cust_name:document.getElementById('cn').value,
@@ -725,7 +769,7 @@ async function saveBill(){
     igst_pct:parseFloat(document.getElementById('igst-p').value)||0,
   }]);
   if(error) toast('Error: '+error.message,'error');
-  else{toast('Bill saved! ✅','success');document.getElementById('bill-no').value=parseInt(document.getElementById('bill-no').value)+1;}
+  else{toast('Bill saved! ✅','success');await fetchNextBillNo();}
 }
 
 function resetBill(){
@@ -737,6 +781,7 @@ function resetBill(){
   document.getElementById('tbody').innerHTML='';
   document.getElementById('bill-date').value=new Date().toISOString().split('T')[0];
   addRow();addRow();addRow();calc();
+  fetchNextBillNo();
 }
 
 /* ── LOAD BILLS ── */
@@ -769,6 +814,46 @@ function renderBills(bills){
 }
 function filterBills(){const q=document.getElementById('srch').value.toLowerCase();renderBills(allBills.filter(b=>(b.cust_name||'').toLowerCase().includes(q)||String(b.bill_no).includes(q)||(b.cust_guest||'').toLowerCase().includes(q)));}
 async function delBill(id){if(!confirm('Delete this bill?')) return;const{error}=await sb.from('bills').delete().eq('id',id);if(error) toast('Error: '+error.message,'error');else{toast('Deleted','success');loadBills();}}
+
+/* ── DUES ── */
+let allDues=[];
+async function loadDues(){
+  const{data,error}=await sb.from('bills').select('*').gt('balance_due',0).order('bill_date',{ascending:true});
+  if(error){document.getElementById('dues-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
+  allDues=data||[];
+  // Stats
+  const total=allDues.reduce((s,b)=>s+(b.balance_due||0),0);
+  document.getElementById('due-count').textContent=allDues.length;
+  document.getElementById('due-total').textContent=f(total);
+  document.getElementById('due-oldest').textContent=allDues.length?`#${allDues[0].bill_no} — ${allDues[0].bill_date||'?'}`:'None';
+  renderDues(allDues);
+}
+function renderDues(dues){
+  if(!dues.length){document.getElementById('dues-list').innerHTML='<div class="empty">🎉 No outstanding dues!</div>';return;}
+  document.getElementById('dues-list').innerHTML=`
+    <table class="hist-table">
+      <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance Due</th><th class="no-print" style="min-width:130px;">Actions</th></tr></thead>
+      <tbody>${dues.map(b=>`<tr>
+        <td data-label="Bill No"><strong>#${b.bill_no}</strong></td>
+        <td data-label="Date">${b.bill_date||'—'}</td>
+        <td data-label="Customer">${b.cust_name||'—'}${b.cust_guest?'<br><small style="color:#888">'+b.cust_guest+'</small>':''}${b.cust_phone?'<br><small style="color:#2E75B6;">📞 '+b.cust_phone+'</small>':''}</td>
+        <td data-label="Grand Total">${f(b.grand_total||0)}</td>
+        <td data-label="Balance Due"><span class="badge badge-unpaid" style="font-size:13px;">${f(b.balance_due)}</span></td>
+        <td class="no-print" style="white-space:nowrap;">
+          <button class="btn btn-sm" style="background:#dbeafe;color:#1e40af;margin-right:3px;" onclick="viewBill(${b.id})">👁️</button>
+          <button class="btn btn-sm" style="background:#dcfce7;color:#166534;margin-right:3px;" onclick="markPaid(${b.id})">✅ Mark Paid</button>
+          <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;" onclick="editBill(${b.id})">✏️</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+function filterDues(){const q=document.getElementById('due-srch').value.toLowerCase();renderDues(allDues.filter(b=>(b.cust_name||'').toLowerCase().includes(q)||String(b.bill_no).includes(q)||(b.cust_guest||'').toLowerCase().includes(q)));}
+async function markPaid(id){
+  if(!confirm('Mark this bill as FULLY PAID? Balance will be set to 0.')) return;
+  const{error}=await sb.from('bills').update({balance_due:0}).eq('id',id);
+  if(error) toast('Error: '+error.message,'error');
+  else{toast('Marked as Paid ✅','success');loadDues();loadBills();}
+}
 
 /* ── MODAL HELPERS ── */
 function closeModal(id){document.getElementById(id).classList.remove('open');}
