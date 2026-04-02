@@ -115,6 +115,20 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .stat-card .val{font-size:20px;font-weight:800;color:var(--bd);}
 .stat-card .sub{font-size:11px;color:#aaa;margin-top:3px;}
 
+/* ── LOGIN SCREEN ── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1B3A6B 0%,#2E75B6 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+.login-box{background:#fff;border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.35);text-align:center;}
+.login-box .logo{font-size:32px;margin-bottom:6px;}
+.login-box h2{font-size:20px;font-weight:800;color:var(--bd);margin-bottom:4px;}
+.login-box p{font-size:12px;color:#888;margin-bottom:24px;}
+.login-box input{width:100%;padding:13px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:15px;text-align:center;letter-spacing:4px;outline:none;transition:border .2s;margin-bottom:14px;}
+.login-box input:focus{border-color:var(--bm);}
+.login-box button{width:100%;padding:14px;background:var(--bd);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:background .2s;}
+.login-box button:hover{background:var(--bm);}
+.login-error{color:var(--rd);font-size:13px;font-weight:600;margin-top:10px;min-height:20px;}
+.login-attempts{font-size:11px;color:#aaa;margin-top:8px;}
+#app-content{display:none;}
+
 /* ── UTILS ── */
 .loading{text-align:center;padding:40px;color:#aaa;font-size:14px;}
 .empty{text-align:center;padding:40px;color:#bbb;}
@@ -442,6 +456,22 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 </head>
 <body>
 
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="logo">🏖️</div>
+    <h2>Kagdiyal Holidays</h2>
+    <p>Billing Management System</p>
+    <input type="password" id="login-pass" placeholder="Enter Password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+    <button onclick="doLogin()">🔐 Login</button>
+    <div class="login-error" id="login-err"></div>
+    <div class="login-attempts" id="login-att"></div>
+  </div>
+</div>
+
+<!-- ══ APP (hidden until login) ══ -->
+<div id="app-content">
+
 <nav>
   <div class="nav-inner">
     <div class="nav-brand">
@@ -454,6 +484,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
       <div class="nav-tab" onclick="showPage('dues',this)">💰 Dues</div>
       <div class="nav-tab" onclick="showPage('customers',this)">Customers</div>
       <div class="nav-tab" onclick="showPage('dashboard',this)">Dashboard</div>
+      <div class="nav-tab" onclick="doLogout()" style="color:#f87171;" title="Logout">🔓 Logout</div>
     </div>
   </div>
 </nav>
@@ -713,7 +744,86 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 <datalist id="rlist"></datalist>
 <div class="toast" id="toast"></div>
 
+</div><!-- end #app-content -->
+
 <script>
+/* ══════════════════════════════════════════
+   🔐 LOGIN & SESSION SECURITY
+   Password change karne ke liye neeche
+   APP_PASS ki value badlo
+══════════════════════════════════════════ */
+const APP_PASS = 'kagdiyal2025'; // ← APNA PASSWORD YAHAN BADLE
+const SESSION_KEY = 'kh_auth_v1';
+const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 ghante
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_TIME = 15 * 60 * 1000; // 15 min lockout
+
+let loginAttempts = parseInt(sessionStorage.getItem('kh_attempts') || '0');
+let lockoutUntil = parseInt(sessionStorage.getItem('kh_lockout') || '0');
+
+function checkSession() {
+  const sess = sessionStorage.getItem(SESSION_KEY);
+  if (!sess) return false;
+  try {
+    const { token, ts } = JSON.parse(sess);
+    if (token !== btoa(APP_PASS) || Date.now() - ts > SESSION_TIMEOUT) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+    return true;
+  } catch { return false; }
+}
+
+function startApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-content').style.display = 'block';
+}
+
+function doLogin() {
+  const now = Date.now();
+  if (lockoutUntil > now) {
+    const mins = Math.ceil((lockoutUntil - now) / 60000);
+    document.getElementById('login-err').textContent = `⛔ Too many attempts. ${mins} min baad try karo.`;
+    return;
+  }
+  const entered = document.getElementById('login-pass').value;
+  if (entered === APP_PASS) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: btoa(APP_PASS), ts: now }));
+    sessionStorage.removeItem('kh_attempts');
+    sessionStorage.removeItem('kh_lockout');
+    loginAttempts = 0;
+    startApp();
+  } else {
+    loginAttempts++;
+    sessionStorage.setItem('kh_attempts', loginAttempts);
+    const remaining = MAX_ATTEMPTS - loginAttempts;
+    if (remaining <= 0) {
+      const until = now + LOCKOUT_TIME;
+      sessionStorage.setItem('kh_lockout', until);
+      lockoutUntil = until;
+      document.getElementById('login-err').textContent = '⛔ 5 galat attempts. 15 min ke liye locked!';
+      document.getElementById('login-att').textContent = '';
+    } else {
+      document.getElementById('login-err').textContent = '❌ Galat password!';
+      document.getElementById('login-att').textContent = `${remaining} attempts baaki`;
+    }
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function doLogout() {
+  if (!confirm('Logout karna chahte ho?')) return;
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+// Page load pe session check
+if (checkSession()) { startApp(); }
+
+/* ══════════════════════════════════════════
+   SUPABASE CONFIG
+══════════════════════════════════════════ */
 const SURL = 'https://ckcjzvfnkckuesqqmuks.supabase.co';
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY2p6dmZua2NrdWVzcXFtdWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzQ5MjQsImV4cCI6MjA5MDYxMDkyNH0.Hd0al1x3a7-refUXc8RVoBmyEBq6sQ9ovHbYJKVlWAM';
 const sb = supabase.createClient(SURL, SKEY);
