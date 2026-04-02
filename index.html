@@ -234,10 +234,17 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
    PRINT — Single A4 page
 ══════════════════════════════════════════ */
 @media print {
+  /* Hide browser URL, date, page number from header/footer */
+  @page {
+    margin: 10mm 12mm;
+    size: A4;
+  }
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   nav,body::before,.no-print,.btn-group,.gst-toggle,.wa-box{display:none!important;}
   body{background:#fff;font-size:9pt;}
-  .page{display:block!important;padding:0;max-width:100%;}
+  /* Only show the active page, hide all others */
+  .page{display:none!important;padding:0;max-width:100%;}
+  .page.active{display:block!important;}
   .card{box-shadow:none;border:1px solid #ccc;margin-bottom:6pt;border-radius:4pt;}
   .card-hd{padding:5pt 8pt;font-size:9pt;}
   .card-bd{padding:8pt;}
