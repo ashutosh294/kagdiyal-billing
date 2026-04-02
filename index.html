@@ -276,61 +276,167 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 }
 
 /* ══════════════════════════════════════════
-   PRINT — Single A4 page
+   PRINT — Single A4 page (Maximum Data Fit)
 ══════════════════════════════════════════ */
 @media print {
-  /* Hide browser URL, date, page number from header/footer */
   @page {
-    margin: 10mm 12mm;
+    margin: 6mm 8mm;
     size: A4;
   }
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  nav,body::before,.no-print,.btn-group,.gst-toggle,.wa-box{display:none!important;}
-  body{background:#fff;font-size:9pt;}
-  /* Only show the active page, hide all others */
+
+  /* Hide everything except bill */
+  nav,body::before,.no-print,.btn-group,.gst-toggle,.wa-box,
+  .add-row-btn,.del-btn{display:none!important;}
+
+  body{background:#fff;font-size:8pt;margin:0;padding:0;}
+
+  /* Only show active page */
   .page{display:none!important;padding:0;max-width:100%;}
   .page.active{display:block!important;}
-  .card{box-shadow:none;border:1px solid #ccc;margin-bottom:6pt;border-radius:4pt;}
-  .card-hd{padding:5pt 8pt;font-size:9pt;}
-  .card-bd{padding:8pt;}
 
-  /* Bill top compact */
-  .bill-top{grid-template-columns:1fr 1fr;gap:6pt;margin-bottom:6pt;}
-  .company-box{padding:8pt 10pt;}
-  .company-box h2{font-size:13pt;}
-  .company-box p{font-size:7pt;}
-  .bill-meta-box{padding:8pt 10pt;gap:4pt;}
-  .meta-row input,.meta-row select{border:none;padding:2pt 0;font-size:9pt;}
-  .meta-row label{font-size:8pt;}
+  /* Cards — zero margin, minimal border */
+  .card{
+    box-shadow:none;
+    border:0.5pt solid #bbb;
+    margin-bottom:3pt;
+    border-radius:2pt;
+    page-break-inside:avoid;
+  }
+  .card-hd{
+    padding:3pt 7pt;
+    font-size:7.5pt;
+    background:var(--bd)!important;
+    color:#fff!important;
+  }
+  .card-bd{padding:5pt 7pt;}
 
-  /* Customer section */
-  .grid2{grid-template-columns:1fr 1fr;gap:6pt;}
-  .fg{margin-bottom:4pt;}
-  .fg label{font-size:7pt;}
-  .fg input{border:none;border-bottom:1px solid #aaa;border-radius:0;padding:2pt 0;font-size:9pt;}
+  /* ── BILL INFO — compact header ── */
+  .bill-top{
+    grid-template-columns:1.6fr 1fr;
+    gap:5pt;
+    margin-bottom:4pt;
+    align-items:stretch;
+  }
+  .company-box{
+    padding:5pt 8pt;
+    border-radius:3pt;
+  }
+  .company-box h2{font-size:12pt;letter-spacing:0;}
+  .company-box p{font-size:6.5pt;margin-top:2pt;line-height:1.4;}
 
-  /* Trip table */
-  .trip-table{font-size:8pt;}
-  .trip-table th{padding:4pt 4pt;font-size:7.5pt;}
-  .trip-table td{padding:3pt 3pt;}
-  .trip-table input{border:none;font-size:8pt;padding:0;background:transparent;}
-  .del-btn{display:none;}
+  .bill-meta-box{
+    padding:5pt 8pt;
+    gap:3pt;
+    border-radius:3pt;
+  }
+  .meta-row{gap:5pt;}
+  .meta-row label{font-size:7pt;min-width:52pt;}
+  .meta-row input,
+  .meta-row select{
+    border:none;
+    border-bottom:0.5pt solid #aaa;
+    border-radius:0;
+    padding:1pt 0;
+    font-size:8pt;
+    background:transparent;
+  }
 
-  /* Totals */
-  .totals-wrap{grid-template-columns:1fr 1fr;gap:6pt;margin-top:6pt;}
-  .bank-box,.tax-box{padding:6pt 8pt;}
-  .bank-box h4{font-size:8pt;margin-bottom:4pt;}
-  .bank-row{font-size:8pt;margin-bottom:2pt;}
-  .tax-row{font-size:8pt;padding:2pt 0;}
-  .tax-input{border:none;font-size:8pt;background:transparent;}
-  .total-row{font-size:10pt;padding:6pt 8pt;margin:4pt -8pt -6pt;}
-  .balance-row{font-size:8pt;padding:5pt 8pt;margin:0 -8pt;}
+  /* ── CUSTOMER SECTION — 3 columns ── */
+  .grid2{grid-template-columns:1fr 1fr 1fr;gap:4pt;}
+  .fg{margin-bottom:2pt;}
+  .fg label{font-size:6pt;margin-bottom:1pt;}
+  .fg input,.fg select{
+    border:none;
+    border-bottom:0.5pt solid #bbb;
+    border-radius:0;
+    padding:1pt 0;
+    font-size:7.5pt;
+    background:transparent;
+  }
+
+  /* ── TRIP TABLE — tightest possible ── */
+  .trip-table{font-size:7.5pt;border-collapse:collapse;}
+  .trip-table th{
+    padding:3pt 3pt;
+    font-size:7pt;
+    background:var(--bm)!important;
+    color:#fff!important;
+  }
+  .trip-table td{
+    padding:2pt 3pt;
+    border-bottom:0.3pt solid #e0e0e0;
+    line-height:1.2;
+  }
+  .trip-table tr:nth-child(even) td{background:#f9f9f9!important;}
+  .trip-table input{
+    border:none;
+    font-size:7.5pt;
+    padding:0;
+    background:transparent;
+    width:100%;
+  }
+  .trip-table .amt-cell{
+    font-size:7.5pt;
+    font-weight:700;
+    padding-right:3pt;
+  }
+
+  /* ── SUMMARY SECTION ── */
+  .totals-wrap{
+    grid-template-columns:1fr 1fr;
+    gap:5pt;
+    margin-top:4pt;
+  }
+
+  /* Bank box */
+  .bank-box{padding:4pt 7pt;border-radius:3pt;}
+  .bank-box h4{
+    font-size:7pt;
+    margin-bottom:3pt;
+    padding-bottom:2pt;
+    border-bottom:1pt solid var(--bm);
+  }
+  .bank-row{font-size:7pt;margin-bottom:1.5pt;gap:4pt;}
+  .bank-row .lbl{min-width:48pt;}
+
+  /* Tax box */
+  .tax-box{padding:4pt 7pt;border-radius:3pt;}
+  .tax-row{
+    font-size:7.5pt;
+    padding:2pt 0;
+    border-bottom:0.3pt solid #ddd;
+  }
+  .tax-input{
+    border:none;
+    font-size:7.5pt;
+    background:transparent;
+    width:45pt;
+    text-align:right;
+  }
+  .balance-row{
+    padding:4pt 7pt;
+    font-size:8pt;
+    margin:0 -7pt;
+    border-radius:0;
+  }
+  .total-row{
+    font-size:9.5pt;
+    padding:5pt 7pt;
+    margin:3pt -7pt -4pt;
+    border-radius:0 0 2pt 2pt;
+  }
 
   /* Words */
-  .words-box{font-size:8pt;padding:5pt 8pt;margin-top:4pt;}
+  .words-box{
+    font-size:7pt;
+    padding:3pt 7pt;
+    margin-top:3pt;
+    border-radius:2pt;
+  }
 
-  /* Add row button hide */
-  .add-row-btn{display:none;}
+  /* Terms row if any */
+  .terms-row{font-size:6.5pt;color:#555;margin-top:3pt;}
 }
 </style>
 </head>
