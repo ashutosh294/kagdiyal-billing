@@ -125,6 +125,49 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .add-row-btn{margin-top:10px;width:100%;padding:9px;border:2px dashed #bbb;background:#fafafa;border-radius:7px;cursor:pointer;font-size:13px;color:#888;font-weight:600;}
 .add-row-btn:hover{border-color:var(--bm);color:var(--bm);background:var(--bl);}
 
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25);}
+.modal-hd{background:var(--bd);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1;border-radius:12px 12px 0 0;}
+.modal-hd h3{font-size:14px;font-weight:800;}
+.modal-close{background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;cursor:pointer;}
+.modal-body{padding:18px;}
+.bd-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.bd-co{background:var(--bd);color:#fff;border-radius:8px;padding:12px 14px;text-align:center;}
+.bd-co h2{font-size:15px;font-weight:800;}
+.bd-co p{font-size:9px;color:#a0c4e8;margin-top:3px;line-height:1.5;}
+.bd-meta{background:var(--gy);border-radius:8px;padding:12px 14px;font-size:12px;}
+.bd-row{display:flex;gap:8px;margin-bottom:5px;}
+.bd-row .lbl{color:#888;min-width:80px;font-weight:600;}
+.bd-row .val{font-weight:700;color:var(--bd);}
+.bd-cust{background:var(--bl);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;}
+.bd-items{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;}
+.bd-items th{background:var(--bm);color:#fff;padding:7px 8px;text-align:center;font-size:11px;}
+.bd-items td{padding:6px 8px;border-bottom:1px solid #eee;text-align:center;}
+.bd-items td.tl{text-align:left;}
+.bd-items tr:nth-child(even) td{background:#fafafa;}
+.bd-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.bd-bank{background:var(--gy);border-radius:8px;padding:12px 14px;font-size:12px;}
+.bd-bank h4{font-size:11px;font-weight:700;color:var(--bd);margin-bottom:6px;border-bottom:2px solid var(--bm);padding-bottom:4px;}
+.bd-tax{background:var(--gy);border-radius:8px;padding:12px 14px;font-size:12px;}
+.bd-tax-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;}
+.bd-tax-row:last-child{border:none;}
+.bd-total{background:var(--bd);color:#fff;border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;}
+.bd-balance{background:var(--rd);color:#fff;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-top:4px;}
+.bd-words{background:var(--ye);border:1px solid #d4b800;border-radius:6px;padding:8px 12px;font-size:11px;font-weight:600;color:var(--bd);margin-top:8px;}
+.edit-trip-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;}
+.edit-trip-table th{background:var(--bm);color:#fff;padding:7px;text-align:center;font-size:11px;}
+.edit-trip-table td{padding:4px 3px;border-bottom:1px solid #eee;vertical-align:middle;}
+.edit-trip-table input{width:100%;padding:5px;border:1px solid #ddd;border-radius:4px;font-size:12px;text-align:center;}
+.edit-trip-table input.tl{text-align:left;}
+.edit-trip-table .amt-c{text-align:right;font-weight:700;color:var(--bd);padding-right:4px;}
+@media(max-width:640px){
+  .bd-top,.bd-summary,.bd-cust{grid-template-columns:1fr;}
+  .modal-overlay{align-items:flex-end;padding:0;}
+  .modal{border-radius:12px 12px 0 0;max-height:88vh;}
+}
+
 /* ══════════════════════════════════════════
    MOBILE  (≤ 640px)
 ══════════════════════════════════════════ */
@@ -344,6 +387,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
         <div class="fg"><label>Guest / Contact Person</label><input type="text" id="cgu" placeholder="e.g. Prof. Amitabh Pandey"></div>
         <div class="fg"><label>State Code</label><input type="text" id="cs" placeholder="e.g. 23"></div>
         <div class="fg"><label>Booked By</label><input type="text" id="cb" placeholder="Name"></div>
+        <div class="fg"><label>Phone / Mobile</label><input type="text" id="cph" placeholder="Customer phone" inputmode="tel"></div>
       </div>
     </div>
   </div>
@@ -409,7 +453,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 
       <div class="btn-group no-print">
         <button class="btn btn-success" onclick="saveBill()">💾 Save Bill</button>
-        <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-primary" onclick="setTimeout(()=>window.print(),100)">🖨️ Print</button>
         <button class="btn btn-warn" onclick="resetBill()">🔄 New Bill</button>
       </div>
     </div>
@@ -463,6 +507,63 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   <div class="card">
     <div class="card-hd">📊 Recent Bills</div>
     <div class="card-bd" id="dash-recent"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ══ VIEW BILL MODAL ══ -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="view-modal-title">📄 Bill Detail</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-warn btn-sm" onclick="printFromView()">🖨️ Print</button>
+        <button class="btn btn-sm" style="background:#2563eb;color:#fff;" onclick="openEditFromView()">✏️ Edit</button>
+        <button class="modal-close" onclick="closeModal('view-modal')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="view-modal-body"></div>
+  </div>
+</div>
+
+<!-- ══ EDIT BILL MODAL ══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>✏️ Edit Bill</h3>
+      <button class="modal-close" onclick="closeModal('edit-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div class="fg"><label>Bill No.</label><input type="number" id="edit-bill-no"></div>
+        <div class="fg"><label>Date</label><input type="date" id="edit-bill-date"></div>
+        <div class="fg"><label>Customer / Company</label><input type="text" id="edit-cn"></div>
+        <div class="fg"><label>Address</label><input type="text" id="edit-ca"></div>
+        <div class="fg"><label>GSTIN</label><input type="text" id="edit-cg"></div>
+        <div class="fg"><label>Guest / Contact</label><input type="text" id="edit-cgu"></div>
+        <div class="fg"><label>State Code</label><input type="text" id="edit-cs"></div>
+        <div class="fg"><label>Booked By</label><input type="text" id="edit-cb"></div>
+        <div class="fg"><label>Phone</label><input type="text" id="edit-cph" inputmode="tel"></div>
+      </div>
+      <div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;">Trip Items</div>
+      <table class="edit-trip-table">
+        <thead><tr><th>Date</th><th>Vehicle</th><th>Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="edit-tbody"></tbody>
+      </table>
+      <button class="add-row-btn" onclick="addEditRow()">+ Add Row</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+        <div class="fg"><label>CGST %</label><input type="number" id="edit-cgst-p" value="0" oninput="calcEdit()"></div>
+        <div class="fg"><label>SGST %</label><input type="number" id="edit-sgst-p" value="0" oninput="calcEdit()"></div>
+        <div class="fg"><label>IGST %</label><input type="number" id="edit-igst-p" value="0" oninput="calcEdit()"></div>
+        <div class="fg"><label>Extra Charges</label><input type="number" id="edit-extra" value="0" oninput="calcEdit()"></div>
+        <div class="fg"><label>Advance</label><input type="number" id="edit-adv" value="0" oninput="calcEdit()"></div>
+        <div class="fg"><label>Grand Total (auto)</label><input type="text" id="edit-grand" readonly style="background:#eef2f7;font-weight:800;color:var(--bd);"></div>
+      </div>
+      <div class="btn-group" style="margin-top:12px;">
+        <button class="btn btn-success" onclick="saveEditBill()">💾 Save Changes</button>
+        <button class="btn" style="background:#eee;color:#333;" onclick="closeModal('edit-modal')">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -587,6 +688,7 @@ function fillCustomer(){
   document.getElementById('cg').value  = c.gstin||'';
   document.getElementById('cgu').value = c.name||'';
   document.getElementById('cs').value  = c.state_code||'';
+  document.getElementById('cph').value = c.phone||'';
 }
 
 /* ── SAVE BILL ── */
@@ -614,6 +716,7 @@ async function saveBill(){
     cust_guest:document.getElementById('cgu').value,
     cust_state:document.getElementById('cs').value,
     cust_booked:document.getElementById('cb').value,
+    cust_phone:document.getElementById('cph').value,
     items,subtotal:sub,cgst:cg,sgst:sg,igst:ig,
     extra_charges:ex,advance:ad,grand_total:gr,
     balance_due:Math.max(0,gr-ad),
@@ -627,7 +730,7 @@ async function saveBill(){
 
 function resetBill(){
   if(!confirm('New bill? Current data will clear.')) return;
-  ['cn','ca','cg','cgu','cs','cb'].forEach(id=>document.getElementById(id).value='');
+  ['cn','ca','cg','cgu','cs','cb','cph'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cust-select').value='';
   document.getElementById('adv').value=0;
   document.getElementById('extra').value=0;
@@ -647,20 +750,275 @@ function renderBills(bills){
   if(!bills.length){document.getElementById('bills-list').innerHTML='<div class="empty">No bills yet.</div>';return;}
   document.getElementById('bills-list').innerHTML=`
     <table class="hist-table">
-      <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance</th><th>Type</th><th class="no-print"></th></tr></thead>
-      <tbody>${bills.map(b=>`<tr>
+      <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance</th><th>Type</th><th class="no-print" style="min-width:160px;">Actions</th></tr></thead>
+      <tbody>${bills.map(b=>`<tr style="cursor:pointer;" ondblclick="viewBill(${b.id})">
         <td data-label="Bill No"><strong>#${b.bill_no}</strong></td>
         <td data-label="Date">${b.bill_date||'—'}</td>
-        <td data-label="Customer">${b.cust_name||'—'}${b.cust_guest?'<br><small style="color:#888">'+b.cust_guest+'</small>':''}</td>
+        <td data-label="Customer">${b.cust_name||'—'}${b.cust_guest?'<br><small style="color:#888">'+b.cust_guest+'</small>':''}${b.cust_phone?'<br><small style="color:#2E75B6;">📞 '+b.cust_phone+'</small>':''}</td>
         <td data-label="Grand Total">${f(b.grand_total||0)}</td>
         <td data-label="Balance">${b.balance_due>0?`<span class="badge badge-unpaid">${f(b.balance_due)}</span>`:'<span class="badge badge-paid">PAID ✅</span>'}</td>
         <td data-label="Type"><span class="badge" style="background:${b.is_gst?'#dbeafe':'#f3f4f6'};color:${b.is_gst?'#1e40af':'#374151'}">${b.is_gst?'GST':'Non-GST'}</span></td>
-        <td class="no-print"><button class="btn btn-sm" style="background:#fee2e2;color:#c00" onclick="delBill(${b.id})">🗑️</button></td>
+        <td class="no-print" style="white-space:nowrap;">
+          <button class="btn btn-sm" style="background:#dbeafe;color:#1e40af;margin-right:3px;" onclick="viewBill(${b.id})">👁️</button>
+          <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;margin-right:3px;" onclick="editBill(${b.id})">✏️</button>
+          <button class="btn btn-sm" style="background:#dcfce7;color:#166534;margin-right:3px;" onclick="reprintBill(${b.id})">🖨️</button>
+          <button class="btn btn-sm" style="background:#fee2e2;color:#c00;" onclick="delBill(${b.id})">🗑️</button>
+        </td>
       </tr>`).join('')}</tbody>
     </table>`;
 }
 function filterBills(){const q=document.getElementById('srch').value.toLowerCase();renderBills(allBills.filter(b=>(b.cust_name||'').toLowerCase().includes(q)||String(b.bill_no).includes(q)||(b.cust_guest||'').toLowerCase().includes(q)));}
 async function delBill(id){if(!confirm('Delete this bill?')) return;const{error}=await sb.from('bills').delete().eq('id',id);if(error) toast('Error: '+error.message,'error');else{toast('Deleted','success');loadBills();}}
+
+/* ── MODAL HELPERS ── */
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+let viewingBillId=null;
+
+/* ── VIEW BILL ── */
+function viewBill(id){
+  const b=allBills.find(x=>x.id===id);
+  if(!b) return;
+  viewingBillId=id;
+  document.getElementById('view-modal-title').textContent=`📄 Bill #${b.bill_no} — ${b.cust_name||''}`;
+  const items=b.items||[];
+  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('view-modal-body').innerHTML=`
+    <div class="bd-top">
+      <div class="bd-co">
+        <h2>KAGDIYAL HOLIDAYS</h2>
+        <p>24X7 PAN INDIA TOUR AND LOCAL RENTAL IN DELHI</p>
+        <p style="font-size:8px;color:#aad4f5;margin-top:4px;">GSTIN: 07OGUPS2098E1ZF &nbsp;|&nbsp; PAN: OGUPS2098E</p>
+      </div>
+      <div class="bd-meta">
+        <div class="bd-row"><span class="lbl">Bill No.</span><span class="val">#${b.bill_no}</span></div>
+        <div class="bd-row"><span class="lbl">Date</span><span class="val">${b.bill_date||'—'}</span></div>
+        <div class="bd-row"><span class="lbl">Type</span><span class="val">${b.is_gst?'GST Bill':'Non-GST Bill'}</span></div>
+      </div>
+    </div>
+    <div class="bd-cust">
+      <div class="bd-row"><span class="lbl">Company</span><span class="val">${b.cust_name||'—'}</span></div>
+      <div class="bd-row"><span class="lbl">Guest</span><span class="val">${b.cust_guest||'—'}</span></div>
+      <div class="bd-row"><span class="lbl">Address</span><span class="val">${b.cust_address||'—'}</span></div>
+      <div class="bd-row"><span class="lbl">GSTIN</span><span class="val">${b.cust_gstin||'—'}</span></div>
+      <div class="bd-row"><span class="lbl">State Code</span><span class="val">${b.cust_state||'—'}</span></div>
+      <div class="bd-row"><span class="lbl">Booked By</span><span class="val">${b.cust_booked||'—'}</span></div>
+      ${b.cust_phone?`<div class="bd-row"><span class="lbl">Phone</span><span class="val">📞 ${b.cust_phone}</span></div>`:''}
+    </div>
+    <table class="bd-items">
+      <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
+      <tbody>${items.map(i=>`<tr>
+        <td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td>
+        <td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <div class="bd-summary">
+      <div class="bd-bank">
+        <h4>🏦 Bank Details</h4>
+        <div class="bd-row"><span class="lbl">Bank</span><span class="val">YES BANK</span></div>
+        <div class="bd-row"><span class="lbl">A/C</span><span class="val">004463300002943</span></div>
+        <div class="bd-row"><span class="lbl">IFSC</span><span class="val">YESB0000044</span></div>
+        <div class="bd-row"><span class="lbl">Branch</span><span class="val">Laxmi Nagar, Delhi</span></div>
+      </div>
+      <div class="bd-tax">
+        <div class="bd-tax-row"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
+        ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
+        ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
+        ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
+        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
+        ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
+        <div class="bd-total"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
+        <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+      </div>
+    </div>
+    <div class="bd-words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>`;
+  document.getElementById('view-modal').classList.add('open');
+}
+
+/* ── PRINT FROM VIEW MODAL ── */
+function printFromView(){
+  const b=allBills.find(x=>x.id===viewingBillId);
+  if(!b) return;
+  reprintBill(b.id);
+}
+
+/* ── REPRINT BILL ── */
+function reprintBill(id){
+  const b=allBills.find(x=>x.id===id);
+  if(!b) return;
+  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const items=b.items||[];
+  const win=window.open('','_blank','width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill #${b.bill_no}</title>
+  <style>
+    @page{margin:10mm 12mm;size:A4;}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    body{font-size:9pt;background:#fff;color:#1a1a2e;}
+    .top{display:grid;grid-template-columns:1fr 1fr;gap:8pt;margin-bottom:8pt;}
+    .co{background:#1B3A6B;color:#fff;border-radius:6pt;padding:10pt 12pt;text-align:center;}
+    .co h2{font-size:14pt;font-weight:800;letter-spacing:.5px;}
+    .co p{font-size:7pt;color:#a0c4e8;margin-top:3pt;line-height:1.4;}
+    .meta{background:#F4F6F9;border-radius:6pt;padding:10pt 12pt;font-size:9pt;}
+    .mr{display:flex;gap:8pt;margin-bottom:4pt;}
+    .mr .l{color:#777;min-width:65pt;font-weight:600;}
+    .mr .v{font-weight:700;color:#1B3A6B;}
+    .cust{background:#D6E4F0;border-radius:6pt;padding:8pt 12pt;margin-bottom:8pt;display:grid;grid-template-columns:1fr 1fr;gap:2pt 12pt;font-size:8.5pt;}
+    table{width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:8pt;}
+    th{background:#2E75B6;color:#fff;padding:5pt 5pt;text-align:center;font-size:7.5pt;}
+    td{padding:4pt 5pt;border-bottom:1px solid #eee;text-align:center;}
+    td.tl{text-align:left;}
+    tr:nth-child(even) td{background:#fafafa;}
+    .smry{display:grid;grid-template-columns:1fr 1fr;gap:8pt;}
+    .bank{background:#F4F6F9;border-radius:6pt;padding:8pt 10pt;font-size:8pt;}
+    .bank h4{font-size:8pt;font-weight:700;color:#1B3A6B;margin-bottom:5pt;border-bottom:2px solid #2E75B6;padding-bottom:3pt;}
+    .br{display:flex;gap:6pt;margin-bottom:3pt;}
+    .br .l{color:#777;min-width:55pt;}
+    .br .v{font-weight:700;}
+    .tax{background:#F4F6F9;border-radius:6pt;padding:8pt 10pt;font-size:8pt;}
+    .tr2{display:flex;justify-content:space-between;padding:3pt 0;border-bottom:1px solid #e8e8e8;}
+    .tr2:last-child{border:none;}
+    .gtotal{background:#1B3A6B;color:#fff;border-radius:5pt;padding:7pt 10pt;display:flex;justify-content:space-between;font-size:11pt;font-weight:800;margin-top:5pt;}
+    .bal{background:#C00000;color:#fff;border-radius:5pt;padding:6pt 10pt;display:flex;justify-content:space-between;font-size:9pt;font-weight:700;margin-top:3pt;}
+    .words{background:#FFF2CC;border:1px solid #d4b800;border-radius:5pt;padding:6pt 10pt;font-size:8pt;font-weight:600;color:#1B3A6B;margin-top:6pt;}
+  </style></head><body>
+  <div class="top">
+    <div class="co"><h2>KAGDIYAL HOLIDAYS</h2><p>24X7 PAN INDIA TOUR AND LOCAL RENTAL IN DELHI</p><p style="font-size:6.5pt;color:#aad4f5;margin-top:3pt;">GSTIN: 07OGUPS2098E1ZF &nbsp;|&nbsp; PAN: OGUPS2098E</p></div>
+    <div class="meta">
+      <div class="mr"><span class="l">Bill No.</span><span class="v">#${b.bill_no}</span></div>
+      <div class="mr"><span class="l">Date</span><span class="v">${b.bill_date||'—'}</span></div>
+      <div class="mr"><span class="l">Type</span><span class="v">${b.is_gst?'GST Bill':'Non-GST Bill'}</span></div>
+    </div>
+  </div>
+  <div class="cust">
+    <div class="mr"><span class="l">Company</span><span class="v">${b.cust_name||'—'}</span></div>
+    <div class="mr"><span class="l">Guest</span><span class="v">${b.cust_guest||'—'}</span></div>
+    <div class="mr"><span class="l">Address</span><span class="v">${b.cust_address||'—'}</span></div>
+    <div class="mr"><span class="l">GSTIN</span><span class="v">${b.cust_gstin||'—'}</span></div>
+    <div class="mr"><span class="l">State</span><span class="v">${b.cust_state||'—'}</span></div>
+    <div class="mr"><span class="l">Booked By</span><span class="v">${b.cust_booked||'—'}</span></div>
+    ${b.cust_phone?`<div class="mr"><span class="l">Phone</span><span class="v">📞 ${b.cust_phone}</span></div>`:''}
+  </div>
+  <table>
+    <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
+    <tbody>${items.map(i=>`<tr><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td><td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td></tr>`).join('')}</tbody>
+  </table>
+  <div class="smry">
+    <div class="bank"><h4>🏦 Bank Details</h4>
+      <div class="br"><span class="l">Bank</span><span class="v">YES BANK</span></div>
+      <div class="br"><span class="l">A/C Name</span><span class="v">KAGDIYAL HOLIDAYS</span></div>
+      <div class="br"><span class="l">A/C No.</span><span class="v">004463300002943</span></div>
+      <div class="br"><span class="l">IFSC</span><span class="v">YESB0000044</span></div>
+      <div class="br"><span class="l">Branch</span><span class="v">Laxmi Nagar, Delhi</span></div>
+    </div>
+    <div class="tax">
+      <div class="tr2"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
+      ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
+      ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
+      ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
+      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
+      ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
+      <div class="gtotal"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
+      <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+    </div>
+  </div>
+  <div class="words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+/* ── EDIT BILL ── */
+function editBill(id){
+  const b=allBills.find(x=>x.id===id);
+  if(!b) return;
+  document.getElementById('edit-id').value=b.id;
+  document.getElementById('edit-bill-no').value=b.bill_no||'';
+  document.getElementById('edit-bill-date').value=b.bill_date||'';
+  document.getElementById('edit-cn').value=b.cust_name||'';
+  document.getElementById('edit-ca').value=b.cust_address||'';
+  document.getElementById('edit-cg').value=b.cust_gstin||'';
+  document.getElementById('edit-cgu').value=b.cust_guest||'';
+  document.getElementById('edit-cs').value=b.cust_state||'';
+  document.getElementById('edit-cb').value=b.cust_booked||'';
+  document.getElementById('edit-cph').value=b.cust_phone||'';
+  document.getElementById('edit-cgst-p').value=b.cgst_pct||0;
+  document.getElementById('edit-sgst-p').value=b.sgst_pct||0;
+  document.getElementById('edit-igst-p').value=b.igst_pct||0;
+  document.getElementById('edit-extra').value=b.extra_charges||0;
+  document.getElementById('edit-adv').value=b.advance||0;
+  const tbody=document.getElementById('edit-tbody');
+  tbody.innerHTML='';
+  (b.items||[]).forEach(i=>addEditRow(i));
+  calcEdit();
+  document.getElementById('edit-modal').classList.add('open');
+}
+function openEditFromView(){
+  closeModal('view-modal');
+  editBill(viewingBillId);
+}
+function addEditRow(i={}){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td><input type="date" class="er-date tl" value="${i.date||''}" oninput="calcEdit()"></td>
+    <td><input type="text" class="er-veh tl" placeholder="Vehicle" list="vlist" value="${i.vehicle||''}"></td>
+    <td><input type="text" class="er-rte tl" placeholder="Route" list="rlist" value="${i.desc||''}"></td>
+    <td><input type="number" class="er-rate" placeholder="0" value="${i.rate||''}" oninput="calcEdit()"></td>
+    <td><input type="number" class="er-qty" value="${i.qty||1}" min="0" step="0.5" oninput="calcEdit()"></td>
+    <td class="amt-c">₹0.00</td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove();calcEdit()">✕</button></td>`;
+  document.getElementById('edit-tbody').appendChild(tr);
+  calcEdit();
+}
+function calcEdit(){
+  let sub=0;
+  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
+    const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    const a=r*q; sub+=a;
+    tr.querySelector('.amt-c').textContent='₹'+a.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  });
+  const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
+  const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
+  const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
+  const ex=parseFloat(document.getElementById('edit-extra').value)||0;
+  const gr=sub+cg+sg+ig+ex;
+  document.getElementById('edit-grand').value='₹'+gr.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+async function saveEditBill(){
+  const id=document.getElementById('edit-id').value;
+  const items=[];
+  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
+    const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    if(r||q) items.push({date:tr.querySelector('.er-date')?.value,vehicle:tr.querySelector('.er-veh')?.value,desc:tr.querySelector('.er-rte')?.value,rate:r,qty:q,amount:r*q});
+  });
+  const sub=items.reduce((s,i)=>s+i.amount,0);
+  const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
+  const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
+  const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
+  const ex=parseFloat(document.getElementById('edit-extra').value)||0;
+  const ad=parseFloat(document.getElementById('edit-adv').value)||0;
+  const gr=sub+cg+sg+ig+ex;
+  const cgp=parseFloat(document.getElementById('edit-cgst-p').value)||0;
+  const sgp=parseFloat(document.getElementById('edit-sgst-p').value)||0;
+  const igp=parseFloat(document.getElementById('edit-igst-p').value)||0;
+  const{error}=await sb.from('bills').update({
+    bill_no:parseInt(document.getElementById('edit-bill-no').value),
+    bill_date:document.getElementById('edit-bill-date').value,
+    cust_name:document.getElementById('edit-cn').value,
+    cust_address:document.getElementById('edit-ca').value,
+    cust_gstin:document.getElementById('edit-cg').value,
+    cust_guest:document.getElementById('edit-cgu').value,
+    cust_state:document.getElementById('edit-cs').value,
+    cust_booked:document.getElementById('edit-cb').value,
+    cust_phone:document.getElementById('edit-cph').value,
+    items,subtotal:sub,cgst:cg,sgst:sg,igst:ig,
+    extra_charges:ex,advance:ad,grand_total:gr,
+    balance_due:Math.max(0,gr-ad),
+    cgst_pct:cgp,sgst_pct:sgp,igst_pct:igp,
+  }).eq('id',id);
+  if(error) toast('Error: '+error.message,'error');
+  else{toast('Bill updated! ✅','success');closeModal('edit-modal');loadBills();}
+}
 
 /* ── CUSTOMERS ── */
 async function loadCusts(){
@@ -718,6 +1076,9 @@ async function loadDash(){
 
 /* ── TOAST ── */
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3000);}
+
+/* ── CLOSE MODAL ON OVERLAY CLICK ── */
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 </script>
 </body>
 </html>
