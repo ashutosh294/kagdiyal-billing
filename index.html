@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Kagdiyal Holidays — Billing</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --bd: #1B3A6B; --bm: #2E75B6; --bl: #D6E4F0;
@@ -474,6 +475,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <input class="search-bar" type="text" id="srch" placeholder="🔍 Search customer, bill no..." oninput="filterBills()">
         <button class="btn btn-primary btn-sm no-print" onclick="loadBills()">↻ Refresh</button>
+        <button class="btn btn-sm no-print" style="background:#1d6f42;color:#fff;" onclick="exportExcel('all')">📥 Export Excel</button>
       </div>
       <div id="bills-list"><div class="loading">Loading...</div></div>
     </div>
@@ -493,6 +495,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <input class="search-bar" type="text" id="due-srch" placeholder="🔍 Search customer, bill no..." oninput="filterDues()">
         <button class="btn btn-primary btn-sm no-print" onclick="loadDues()">↻ Refresh</button>
+        <button class="btn btn-sm no-print" style="background:#1d6f42;color:#fff;" onclick="exportExcel('dues')">📥 Export Dues</button>
       </div>
       <div id="dues-list"><div class="loading">Loading...</div></div>
     </div>
@@ -531,7 +534,14 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   </div>
   <div class="card">
     <div class="card-hd">📊 Recent Bills</div>
-    <div class="card-bd" id="dash-recent"><div class="loading">Loading...</div></div>
+    <div class="card-bd">
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn btn-sm no-print" style="background:#1d6f42;color:#fff;" onclick="exportExcel('all')">📥 Full Report (Excel)</button>
+        <button class="btn btn-sm no-print" style="background:#c00;color:#fff;" onclick="exportExcel('dues')">📥 Dues Report (Excel)</button>
+        <button class="btn btn-sm no-print" style="background:#2E75B6;color:#fff;" onclick="exportExcel('month')">📥 This Month (Excel)</button>
+      </div>
+      <div id="dash-recent"><div class="loading">Loading...</div></div>
+    </div>
   </div>
 </div>
 
@@ -1195,6 +1205,121 @@ function toast(msg,type=''){const t=document.getElementById('toast');t.textConte
 
 /* ── CLOSE MODAL ON OVERLAY CLICK ── */
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+/* ── EXCEL EXPORT ── */
+async function exportExcel(type='all'){
+  toast('Preparing Excel...','');
+  // Fetch fresh data
+  const{data:bills}=await sb.from('bills').select('*').order('bill_no',{ascending:true});
+  if(!bills||!bills.length){toast('No data to export','error');return;}
+
+  const now=new Date();
+  let data=bills;
+  let sheetName='All Bills';
+  let fileName='Kagdiyal_Holidays';
+
+  if(type==='dues'){
+    data=bills.filter(b=>b.balance_due>0);
+    sheetName='Outstanding Dues';
+    fileName+='_Dues';
+    if(!data.length){toast('No outstanding dues!','error');return;}
+  } else if(type==='month'){
+    data=bills.filter(b=>{
+      const d=new Date(b.bill_date);
+      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    });
+    sheetName=now.toLocaleString('en-IN',{month:'long'})+' '+now.getFullYear();
+    fileName+='_'+sheetName.replace(' ','_');
+    if(!data.length){toast('No bills this month!','error');return;}
+  } else {
+    fileName+='_All_Bills';
+  }
+
+  fileName+='_'+now.toISOString().slice(0,10)+'.xlsx';
+
+  // ── Sheet 1: Bills Summary ──
+  const summaryRows=data.map((b,i)=>({
+    'Sr.No': i+1,
+    'Bill No.': b.bill_no,
+    'Date': b.bill_date||'',
+    'Customer / Company': b.cust_name||'',
+    'Guest / Contact': b.cust_guest||'',
+    'Address': b.cust_address||'',
+    'GSTIN': b.cust_gstin||'',
+    'State': b.cust_state||'',
+    'Phone': b.cust_phone||'',
+    'Booked By': b.cust_booked||'',
+    'Bill Type': b.is_gst?'GST':'Non-GST',
+    'Subtotal (₹)': b.subtotal||0,
+    'CGST %': b.cgst_pct||0,
+    'CGST (₹)': b.cgst||0,
+    'SGST %': b.sgst_pct||0,
+    'SGST (₹)': b.sgst||0,
+    'IGST %': b.igst_pct||0,
+    'IGST (₹)': b.igst||0,
+    'Extra Charges (₹)': b.extra_charges||0,
+    'Grand Total (₹)': b.grand_total||0,
+    'Advance (₹)': b.advance||0,
+    'Balance Due (₹)': b.balance_due||0,
+    'Status': (b.balance_due||0)>0?'UNPAID':'PAID',
+  }));
+
+  // ── Sheet 2: Trip Items (itemwise) ──
+  const itemRows=[];
+  data.forEach(b=>{
+    (b.items||[]).forEach(i=>{
+      itemRows.push({
+        'Bill No.': b.bill_no,
+        'Bill Date': b.bill_date||'',
+        'Customer': b.cust_name||'',
+        'Trip Date': i.date||'',
+        'Vehicle': i.vehicle||'',
+        'Route / Duty': i.desc||'',
+        'Rate (₹)': i.rate||0,
+        'Qty': i.qty||0,
+        'Amount (₹)': i.amount||0,
+      });
+    });
+  });
+
+  // ── Sheet 3: Summary Stats ──
+  const totalRev=data.reduce((s,b)=>s+(b.grand_total||0),0);
+  const totalDue=data.reduce((s,b)=>s+(b.balance_due||0),0);
+  const totalPaid=totalRev-totalDue;
+  const gstBills=data.filter(b=>b.is_gst).length;
+  const statsRows=[
+    {Metric:'Total Bills',Value:data.length},
+    {Metric:'Total Revenue (₹)',Value:totalRev},
+    {Metric:'Total Collected (₹)',Value:totalPaid},
+    {Metric:'Total Outstanding (₹)',Value:totalDue},
+    {Metric:'GST Bills',Value:gstBills},
+    {Metric:'Non-GST Bills',Value:data.length-gstBills},
+    {Metric:'Unpaid Bills',Value:data.filter(b=>b.balance_due>0).length},
+    {Metric:'Paid Bills',Value:data.filter(b=>!b.balance_due||b.balance_due<=0).length},
+    {Metric:'Report Generated',Value:now.toLocaleString('en-IN')},
+  ];
+
+  // Build workbook
+  const wb=XLSX.utils.book_new();
+
+  const ws1=XLSX.utils.json_to_sheet(summaryRows);
+  // Column widths for sheet 1
+  ws1['!cols']=[{wch:5},{wch:8},{wch:12},{wch:25},{wch:20},{wch:20},{wch:18},{wch:8},{wch:14},{wch:14},{wch:10},{wch:12},{wch:8},{wch:10},{wch:8},{wch:10},{wch:8},{wch:10},{wch:14},{wch:14},{wch:12},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,sheetName);
+
+  if(itemRows.length){
+    const ws2=XLSX.utils.json_to_sheet(itemRows);
+    ws2['!cols']=[{wch:8},{wch:12},{wch:22},{wch:12},{wch:16},{wch:35},{wch:12},{wch:6},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws2,'Trip Items');
+  }
+
+  const ws3=XLSX.utils.json_to_sheet(statsRows);
+  ws3['!cols']=[{wch:25},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Summary');
+
+  XLSX.writeFile(wb,fileName);
+  toast('Excel downloaded! ✅','success');
+}
 </script>
 </body>
 </html>
