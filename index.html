@@ -563,13 +563,25 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
     <div class="card-hd">💰 Summary</div>
     <div class="card-bd">
       <div class="totals-wrap">
-        <div class="bank-box">
-          <h4>🏦 Our Bank Details</h4>
-          <div class="bank-row"><span class="lbl">Bank:</span><span class="val">YES BANK</span></div>
-          <div class="bank-row"><span class="lbl">A/C Name:</span><span class="val">KAGDIYAL HOLIDAYS</span></div>
-          <div class="bank-row"><span class="lbl">A/C No.:</span><span class="val">004463300002943</span></div>
-          <div class="bank-row"><span class="lbl">Branch:</span><span class="val">Laxmi Nagar, Delhi</span></div>
-          <div class="bank-row"><span class="lbl">IFSC:</span><span class="val">YESB0000044</span></div>
+        <div class="bank-box" id="bank-box">
+          <!-- GST mode: static -->
+          <div id="bank-static">
+            <h4>🏦 Our Bank Details</h4>
+            <div class="bank-row"><span class="lbl">Bank:</span><span class="val">YES BANK</span></div>
+            <div class="bank-row"><span class="lbl">A/C Name:</span><span class="val">KAGDIYAL HOLIDAYS</span></div>
+            <div class="bank-row"><span class="lbl">A/C No.:</span><span class="val">004463300002943</span></div>
+            <div class="bank-row"><span class="lbl">Branch:</span><span class="val">Laxmi Nagar, Delhi</span></div>
+            <div class="bank-row"><span class="lbl">IFSC:</span><span class="val">YESB0000044</span></div>
+          </div>
+          <!-- Non-GST mode: editable -->
+          <div id="bank-edit" style="display:none;">
+            <h4 style="margin-bottom:10px;">🏦 Bank Details <span style="font-size:10px;font-weight:400;color:#aaa;">(editable)</span></h4>
+            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Bank:</span><input id="bk-bank" type="text" value="YES BANK" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C Name:</span><input id="bk-name" type="text" value="KAGDIYAL HOLIDAYS" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C No.:</span><input id="bk-acno" type="text" value="004463300002943" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Branch:</span><input id="bk-branch" type="text" value="Laxmi Nagar, Delhi" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+            <div class="bank-row"><span class="lbl">IFSC:</span><input id="bk-ifsc" type="text" value="YESB0000044" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+          </div>
         </div>
         <div class="tax-box">
           <div class="tax-row"><span>Total Before Tax</span><strong id="subtotal">₹0.00</strong></div>
@@ -900,6 +912,9 @@ function setGST(v) {
   document.getElementById('btn-gst').classList.toggle('active',v);
   document.getElementById('btn-nongst').classList.toggle('active',!v);
   ['cgst-row','sgst-row','igst-row'].forEach(id=>document.getElementById(id).style.display=v?'':'none');
+  // Bank box: static in GST, editable in Non-GST
+  document.getElementById('bank-static').style.display = v ? '' : 'none';
+  document.getElementById('bank-edit').style.display   = v ? 'none' : '';
   calc();
 }
 
@@ -1007,6 +1022,14 @@ async function saveBill(){
   const ex=parseFloat(document.getElementById('extra').value)||0;
   const ad=parseFloat(document.getElementById('adv').value)||0;
   const gr=sub+cg+sg+ig+ex;
+  // Bank details — custom if Non-GST, default if GST
+  const bankData = isGST ? null : {
+    bank: document.getElementById('bk-bank').value||'YES BANK',
+    name: document.getElementById('bk-name').value||'KAGDIYAL HOLIDAYS',
+    acno: document.getElementById('bk-acno').value||'004463300002943',
+    branch: document.getElementById('bk-branch').value||'Laxmi Nagar, Delhi',
+    ifsc: document.getElementById('bk-ifsc').value||'YESB0000044',
+  };
   const {error}=await sb.from('bills').insert([{
     bill_no:billNo,
     bill_date:document.getElementById('bill-date').value,
@@ -1024,6 +1047,7 @@ async function saveBill(){
     cgst_pct:parseFloat(document.getElementById('cgst-p').value)||0,
     sgst_pct:parseFloat(document.getElementById('sgst-p').value)||0,
     igst_pct:parseFloat(document.getElementById('igst-p').value)||0,
+    bank_details: bankData,
   }]);
   if(error) toast('Error: '+error.message,'error');
   else{toast('Bill saved! ✅','success');await fetchNextBillNo();}
@@ -1156,10 +1180,12 @@ function viewBill(id){
     <div class="bd-summary">
       <div class="bd-bank">
         <h4>🏦 Bank Details</h4>
-        <div class="bd-row"><span class="lbl">Bank</span><span class="val">YES BANK</span></div>
-        <div class="bd-row"><span class="lbl">A/C</span><span class="val">004463300002943</span></div>
-        <div class="bd-row"><span class="lbl">IFSC</span><span class="val">YESB0000044</span></div>
-        <div class="bd-row"><span class="lbl">Branch</span><span class="val">Laxmi Nagar, Delhi</span></div>
+        ${(()=>{const bk=b.bank_details||{bank:'YES BANK',name:'KAGDIYAL HOLIDAYS',acno:'004463300002943',branch:'Laxmi Nagar, Delhi',ifsc:'YESB0000044'};return`
+        <div class="bd-row"><span class="lbl">Bank</span><span class="val">${bk.bank}</span></div>
+        <div class="bd-row"><span class="lbl">A/C</span><span class="val">${bk.acno}</span></div>
+        <div class="bd-row"><span class="lbl">A/C Name</span><span class="val">${bk.name}</span></div>
+        <div class="bd-row"><span class="lbl">Branch</span><span class="val">${bk.branch}</span></div>
+        <div class="bd-row"><span class="lbl">IFSC</span><span class="val">${bk.ifsc}</span></div>`;})()}
       </div>
       <div class="bd-tax">
         <div class="bd-tax-row"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
@@ -1245,11 +1271,12 @@ function reprintBill(id){
   </table>
   <div class="smry">
     <div class="bank"><h4>🏦 Bank Details</h4>
-      <div class="br"><span class="l">Bank</span><span class="v">YES BANK</span></div>
-      <div class="br"><span class="l">A/C Name</span><span class="v">KAGDIYAL HOLIDAYS</span></div>
-      <div class="br"><span class="l">A/C No.</span><span class="v">004463300002943</span></div>
-      <div class="br"><span class="l">IFSC</span><span class="v">YESB0000044</span></div>
-      <div class="br"><span class="l">Branch</span><span class="v">Laxmi Nagar, Delhi</span></div>
+      ${(()=>{const bk=b.bank_details||{bank:'YES BANK',name:'KAGDIYAL HOLIDAYS',acno:'004463300002943',branch:'Laxmi Nagar, Delhi',ifsc:'YESB0000044'};return`
+      <div class="br"><span class="l">Bank</span><span class="v">${bk.bank}</span></div>
+      <div class="br"><span class="l">A/C Name</span><span class="v">${bk.name}</span></div>
+      <div class="br"><span class="l">A/C No.</span><span class="v">${bk.acno}</span></div>
+      <div class="br"><span class="l">IFSC</span><span class="v">${bk.ifsc}</span></div>
+      <div class="br"><span class="l">Branch</span><span class="v">${bk.branch}</span></div>`;})()}
     </div>
     <div class="tax">
       <div class="tr2"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
