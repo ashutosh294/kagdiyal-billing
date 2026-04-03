@@ -564,24 +564,12 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
     <div class="card-bd">
       <div class="totals-wrap">
         <div class="bank-box" id="bank-box">
-          <!-- GST mode: static -->
-          <div id="bank-static">
-            <h4>🏦 Our Bank Details</h4>
-            <div class="bank-row"><span class="lbl">Bank:</span><span class="val">YES BANK</span></div>
-            <div class="bank-row"><span class="lbl">A/C Name:</span><span class="val">KAGDIYAL HOLIDAYS</span></div>
-            <div class="bank-row"><span class="lbl">A/C No.:</span><span class="val">004463300002943</span></div>
-            <div class="bank-row"><span class="lbl">Branch:</span><span class="val">Laxmi Nagar, Delhi</span></div>
-            <div class="bank-row"><span class="lbl">IFSC:</span><span class="val">YESB0000044</span></div>
-          </div>
-          <!-- Non-GST mode: editable -->
-          <div id="bank-edit" style="display:none;">
-            <h4 style="margin-bottom:10px;">🏦 Bank Details <span style="font-size:10px;font-weight:400;color:#aaa;">(editable)</span></h4>
-            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Bank:</span><input id="bk-bank" type="text" value="YES BANK" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
-            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C Name:</span><input id="bk-name" type="text" value="KAGDIYAL HOLIDAYS" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
-            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C No.:</span><input id="bk-acno" type="text" value="004463300002943" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
-            <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Branch:</span><input id="bk-branch" type="text" value="Laxmi Nagar, Delhi" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
-            <div class="bank-row"><span class="lbl">IFSC:</span><input id="bk-ifsc" type="text" value="YESB0000044" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
-          </div>
+          <h4 style="margin-bottom:10px;">🏦 Bank Details <span style="font-size:10px;font-weight:400;color:#a0c4e8;">(editable — save hoga bill ke saath)</span></h4>
+          <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Bank:</span><input id="bk-bank" type="text" placeholder="Bank name" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+          <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C Name:</span><input id="bk-name" type="text" placeholder="Account holder name" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+          <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">A/C No.:</span><input id="bk-acno" type="text" placeholder="Account number" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+          <div class="bank-row" style="margin-bottom:6px;"><span class="lbl">Branch:</span><input id="bk-branch" type="text" placeholder="Branch name" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+          <div class="bank-row"><span class="lbl">IFSC:</span><input id="bk-ifsc" type="text" placeholder="IFSC code" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
         </div>
         <div class="tax-box">
           <div class="tax-row"><span>Total Before Tax</span><strong id="subtotal">₹0.00</strong></div>
@@ -850,6 +838,7 @@ window.onload = async () => {
   document.getElementById('vlist').innerHTML = VEHICLES.map(v=>`<option value="${v}">`).join('');
   document.getElementById('rlist').innerHTML = ROUTES.map(r=>`<option value="${r}">`).join('');
   addRow(); addRow(); addRow();
+  loadSavedBank();
   await loadCusts();
   await loadBills();
   await loadDash();
@@ -906,15 +895,36 @@ function showPage(p, el) {
   if(p==='dues') loadDues();
 }
 
+/* ── BANK DETAILS — Last used se pre-fill ── */
+const DEFAULT_BANK = {bank:'YES BANK',name:'KAGDIYAL HOLIDAYS',acno:'004463300002943',branch:'Laxmi Nagar, Delhi',ifsc:'YESB0000044'};
+function loadSavedBank(){
+  let saved = DEFAULT_BANK;
+  try { const s=sessionStorage.getItem('kh_last_bank'); if(s) saved={...DEFAULT_BANK,...JSON.parse(s)}; } catch(e){}
+  document.getElementById('bk-bank').value   = saved.bank;
+  document.getElementById('bk-name').value   = saved.name;
+  document.getElementById('bk-acno').value   = saved.acno;
+  document.getElementById('bk-branch').value = saved.branch;
+  document.getElementById('bk-ifsc').value   = saved.ifsc;
+}
+function getCurrentBank(){
+  const bk={
+    bank:   document.getElementById('bk-bank').value  || DEFAULT_BANK.bank,
+    name:   document.getElementById('bk-name').value  || DEFAULT_BANK.name,
+    acno:   document.getElementById('bk-acno').value  || DEFAULT_BANK.acno,
+    branch: document.getElementById('bk-branch').value|| DEFAULT_BANK.branch,
+    ifsc:   document.getElementById('bk-ifsc').value  || DEFAULT_BANK.ifsc,
+  };
+  const isDefault = JSON.stringify(bk)===JSON.stringify(DEFAULT_BANK);
+  if(!isDefault) sessionStorage.setItem('kh_last_bank', JSON.stringify(bk));
+  return isDefault ? null : bk;
+}
+
 /* ── GST TOGGLE ── */
 function setGST(v) {
   isGST = v;
   document.getElementById('btn-gst').classList.toggle('active',v);
   document.getElementById('btn-nongst').classList.toggle('active',!v);
   ['cgst-row','sgst-row','igst-row'].forEach(id=>document.getElementById(id).style.display=v?'':'none');
-  // Bank box: static in GST, editable in Non-GST
-  document.getElementById('bank-static').style.display = v ? '' : 'none';
-  document.getElementById('bank-edit').style.display   = v ? 'none' : '';
   calc();
 }
 
@@ -1022,14 +1032,7 @@ async function saveBill(){
   const ex=parseFloat(document.getElementById('extra').value)||0;
   const ad=parseFloat(document.getElementById('adv').value)||0;
   const gr=sub+cg+sg+ig+ex;
-  // Bank details — custom if Non-GST, default if GST
-  const bankData = isGST ? null : {
-    bank: document.getElementById('bk-bank').value||'YES BANK',
-    name: document.getElementById('bk-name').value||'KAGDIYAL HOLIDAYS',
-    acno: document.getElementById('bk-acno').value||'004463300002943',
-    branch: document.getElementById('bk-branch').value||'Laxmi Nagar, Delhi',
-    ifsc: document.getElementById('bk-ifsc').value||'YESB0000044',
-  };
+  const bankData = getCurrentBank();
   const {error}=await sb.from('bills').insert([{
     bill_no:billNo,
     bill_date:document.getElementById('bill-date').value,
@@ -1061,6 +1064,7 @@ function resetBill(){
   document.getElementById('extra').value=0;
   document.getElementById('tbody').innerHTML='';
   document.getElementById('bill-date').value=new Date().toISOString().split('T')[0];
+  loadSavedBank();
   addRow();addRow();addRow();calc();
   fetchNextBillNo();
 }
