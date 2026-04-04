@@ -189,6 +189,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
    MOBILE  (≤ 640px)
 ══════════════════════════════════════════ */
 @media(max-width:640px){
+  #mob-logout{display:block!important;}
   /* Nav — bottom tab bar style */
   nav{position:fixed;bottom:0;top:auto;width:100%;box-shadow:0 -2px 8px rgba(0,0,0,0.15);}
   .nav-inner{flex-direction:column;padding:0;}
@@ -474,11 +475,17 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 <!-- ══ APP (hidden until login) ══ -->
 <div id="app-content">
 
+<!-- Mobile logout — top right, only on mobile -->
+<button onclick="doLogout()" id="mob-logout" title="Logout" style="display:none;position:fixed;top:10px;right:12px;z-index:200;background:rgba(27,58,107,0.92);border:1px solid rgba(255,255,255,0.15);color:#f87171;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;backdrop-filter:blur(4px);">🔓</button>
+
 <nav>
   <div class="nav-inner">
-    <div class="nav-brand">
-      <h1>🏖️ Kagdiyal Holidays</h1>
-      <p>Billing Management System</p>
+    <div class="nav-brand" style="display:flex;align-items:center;gap:16px;">
+      <div>
+        <h1>🏖️ Kagdiyal Holidays</h1>
+        <p>Billing Management System</p>
+      </div>
+      <button onclick="doLogout()" title="Logout" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#f87171;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;">🔓 Logout</button>
     </div>
     <div class="nav-tabs">
       <div class="nav-tab active" onclick="showPage('new-bill',this)">New Bill</div>
@@ -486,7 +493,6 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
       <div class="nav-tab" onclick="showPage('dues',this)">💰 Dues</div>
       <div class="nav-tab" onclick="showPage('customers',this)">Customers</div>
       <div class="nav-tab" onclick="showPage('dashboard',this)">Dashboard</div>
-      <div class="nav-tab" onclick="doLogout()" style="color:#f87171;" title="Logout">🔓 Logout</div>
     </div>
   </div>
 </nav>
@@ -734,6 +740,14 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
         <div class="fg"><label>Extra Charges</label><input type="number" id="edit-extra" value="0" oninput="calcEdit()"></div>
         <div class="fg"><label>Advance</label><input type="number" id="edit-adv" value="0" oninput="calcEdit()"></div>
         <div class="fg"><label>Grand Total (auto)</label><input type="text" id="edit-grand" readonly style="background:#eef2f7;font-weight:800;color:var(--bd);"></div>
+      </div>
+      <div style="margin:12px 0 8px;font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;">🏦 Bank Details</div>
+      <div style="background:var(--gy);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">Bank:</span><input id="ebk-bank" type="text" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">A/C Name:</span><input id="ebk-name" type="text" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">A/C No.:</span><input id="ebk-acno" type="text" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">Branch:</span><input id="ebk-branch" type="text" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">IFSC:</span><input id="ebk-ifsc" type="text" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>
       </div>
       <div class="btn-group" style="margin-top:12px;">
         <button class="btn btn-success" onclick="saveEditBill()">💾 Save Changes</button>
@@ -1453,6 +1467,12 @@ function editBill(id){
   document.getElementById('edit-igst-p').value=b.igst_pct||0;
   document.getElementById('edit-extra').value=b.extra_charges||0;
   document.getElementById('edit-adv').value=b.advance||0;
+  const bk=b.bank_details||DEFAULT_BANK;
+  document.getElementById('ebk-bank').value=bk.bank||DEFAULT_BANK.bank;
+  document.getElementById('ebk-name').value=bk.name||DEFAULT_BANK.name;
+  document.getElementById('ebk-acno').value=bk.acno||DEFAULT_BANK.acno;
+  document.getElementById('ebk-branch').value=bk.branch||DEFAULT_BANK.branch;
+  document.getElementById('ebk-ifsc').value=bk.ifsc||DEFAULT_BANK.ifsc;
   const tbody=document.getElementById('edit-tbody');
   tbody.innerHTML='';
   (b.items||[]).forEach(i=>addEditRow(i));
@@ -1523,6 +1543,7 @@ async function saveEditBill(){
     extra_charges:ex,advance:ad,grand_total:gr,
     balance_due:Math.max(0,gr-ad),
     cgst_pct:cgp,sgst_pct:sgp,igst_pct:igp,
+    bank_details:(()=>{const bk={bank:document.getElementById('ebk-bank').value||DEFAULT_BANK.bank,name:document.getElementById('ebk-name').value||DEFAULT_BANK.name,acno:document.getElementById('ebk-acno').value||DEFAULT_BANK.acno,branch:document.getElementById('ebk-branch').value||DEFAULT_BANK.branch,ifsc:document.getElementById('ebk-ifsc').value||DEFAULT_BANK.ifsc};return JSON.stringify(bk)===JSON.stringify(DEFAULT_BANK)?null:bk;})(),
   }).eq('id',id);
   if(error) toast('Error: '+error.message,'error');
   else{toast('Bill updated! ✅','success');closeModal('edit-modal');loadBills();}
