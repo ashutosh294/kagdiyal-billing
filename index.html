@@ -867,10 +867,42 @@ let billsLoaded = false, custsLoaded = false;
 const VEHICLES = ['Swift Dzire','Toyota Innova','Innova Crysta','Tempo Traveller','Mini Bus','Luxury Bus','Maruti Ertiga','Toyota Fortuner','ERTIGA 7778','SEDAN 1980','INNOVA 1234','CRYSTA 5678'];
 const ROUTES   = ['Delhi Local — Full Day (8 hrs / 80 km)','Delhi Local — Half Day (4 hrs / 40 km)','Delhi → Agra → Delhi (Day Trip)','Delhi → Jaipur → Delhi','IGI Airport → Hotel (Transfer)','Hotel → IGI Airport (Transfer)','Delhi → Shimla Tour (2N/3D)','Rajasthan Tour (5N/6D)','Golden Triangle (Delhi-Agra-Jaipur 3N/4D)','Outstation — Per Day Charge','Wedding / Event Booking','Corporate Monthly Package','EX HR','EX KM','NIGHT CHARGES','AIRPORT PARKING'];
 
+/* ── GLOBAL HELPERS ── */
+const INR = new Intl.NumberFormat('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt = n => '₹' + INR.format(Number(n)||0);
+function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+const dCalc = debounce(()=>calc());
+
 window.onload = async () => {
   document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('vlist').innerHTML = VEHICLES.map(v=>`<option value="${v}">`).join('');
   document.getElementById('rlist').innerHTML = ROUTES.map(r=>`<option value="${r}">`).join('');
+
+  /* ── DOM ELEMENT CACHE ── */
+  window.EL = {
+    cgstP:    document.getElementById('cgst-p'),
+    sgstP:    document.getElementById('sgst-p'),
+    igstP:    document.getElementById('igst-p'),
+    extra:    document.getElementById('extra'),
+    adv:      document.getElementById('adv'),
+    subtotal: document.getElementById('subtotal'),
+    cgstA:    document.getElementById('cgst-a'),
+    sgstA:    document.getElementById('sgst-a'),
+    igstA:    document.getElementById('igst-a'),
+    grand:    document.getElementById('grand'),
+    bal:      document.getElementById('bal'),
+    words:    document.getElementById('words'),
+    cn:       document.getElementById('cn'),
+    billNo:   document.getElementById('bill-no'),
+    billDate: document.getElementById('bill-date'),
+    bkBank:   document.getElementById('bk-bank'),
+    bkAcno:   document.getElementById('bk-acno'),
+    bkIfsc:   document.getElementById('bk-ifsc'),
+    waMsg:    document.getElementById('wa-msg'),
+    billsList:document.getElementById('bills-list'),
+    custList: document.getElementById('cust-list'),
+    tbody:    document.getElementById('tbody'),
+  };
   addRow(); addRow(); addRow();
   loadSavedBank();
   await Promise.all([loadCusts(), loadBills(), fetchNextBillNo()]);
@@ -971,37 +1003,36 @@ function addRow() {
     <td data-label="Date"><input type="date" class="r-date tl" oninput="calc()"></td>
     <td data-label="Vehicle"><input type="text" class="r-veh tl" placeholder="Vehicle / No." list="vlist" autocomplete="off"></td>
     <td data-label="Route"><input type="text" class="r-rte tl" placeholder="Route / Duty" list="rlist" autocomplete="off"></td>
-    <td data-label="Rate (₹)"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" oninput="calc()"></td>
-    <td data-label="Qty"><input type="number" class="r-qty" value="1" min="0" step="0.5" inputmode="decimal" oninput="calc()"></td>
+    <td data-label="Rate (₹)"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" oninput="dCalc()"></td>
+    <td data-label="Qty"><input type="number" class="r-qty" value="1" min="0" step="0.5" inputmode="decimal" oninput="dCalc()"></td>
     <td class="amt-cell" data-label="Amount">₹0.00</td>
     <td class="no-print"><button class="del-btn" onclick="this.closest('tr').remove();calc()">✕</button></td>`;
-  document.getElementById('tbody').appendChild(tr);
+  EL.tbody.appendChild(tr);
 }
 
 /* ── CALC ── */
 function calc() {
   let sub = 0;
-  document.querySelectorAll('#tbody tr').forEach(tr => {
+  EL.tbody.querySelectorAll('tr').forEach(tr => {
     const r = parseFloat(tr.querySelector('.r-rate')?.value)||0;
     const q = parseFloat(tr.querySelector('.r-qty')?.value)||0;
     const a = r*q; sub += a;
-    tr.querySelector('.amt-cell').textContent = '₹'+a.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    tr.querySelector('.amt-cell').textContent = fmt(a);
   });
-  const cg = isGST ? sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100 : 0;
-  const sg = isGST ? sub*(parseFloat(document.getElementById('sgst-p').value)||0)/100 : 0;
-  const ig = isGST ? sub*(parseFloat(document.getElementById('igst-p').value)||0)/100 : 0;
-  const ex = parseFloat(document.getElementById('extra').value)||0;
-  const ad = parseFloat(document.getElementById('adv').value)||0;
+  const cg = isGST ? sub*(parseFloat(EL.cgstP.value)||0)/100 : 0;
+  const sg = isGST ? sub*(parseFloat(EL.sgstP.value)||0)/100 : 0;
+  const ig = isGST ? sub*(parseFloat(EL.igstP.value)||0)/100 : 0;
+  const ex = parseFloat(EL.extra.value)||0;
+  const ad = parseFloat(EL.adv.value)||0;
   const gr = sub+cg+sg+ig+ex;
   const bl = gr-ad;
-  const f  = n=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('subtotal').textContent = f(sub);
-  document.getElementById('cgst-a').textContent   = f(cg);
-  document.getElementById('sgst-a').textContent   = f(sg);
-  document.getElementById('igst-a').textContent   = f(ig);
-  document.getElementById('grand').textContent     = f(gr);
-  document.getElementById('bal').textContent       = bl<=0?'PAID ✅':f(bl);
-  document.getElementById('words').textContent     = 'Rs. '+n2w(Math.round(gr))+' Only /-';
+  EL.subtotal.textContent = fmt(sub);
+  EL.cgstA.textContent    = fmt(cg);
+  EL.sgstA.textContent    = fmt(sg);
+  EL.igstA.textContent    = fmt(ig);
+  EL.grand.textContent    = fmt(gr);
+  EL.bal.textContent      = bl<=0?'PAID ✅':fmt(bl);
+  EL.words.textContent    = 'Rs. '+n2w(Math.round(gr))+' Only /-';
   updateWA(gr,bl);
 }
 
@@ -1022,17 +1053,15 @@ function n2w(n){
 
 /* ── WHATSAPP ── */
 function updateWA(gr,bl){
-  const nm=document.getElementById('cn').value||'Customer';
-  const bn=document.getElementById('bill-no').value;
-  const bd=document.getElementById('bill-date').value;
-  const f=n=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  // Dynamic bank details from current box
+  const nm=EL.cn.value||'Customer';
+  const bn=EL.billNo.value;
+  const bd=EL.billDate.value;
   const bk={
-    bank:  document.getElementById('bk-bank').value  || DEFAULT_BANK.bank,
-    acno:  document.getElementById('bk-acno').value  || DEFAULT_BANK.acno,
-    ifsc:  document.getElementById('bk-ifsc').value  || DEFAULT_BANK.ifsc,
+    bank:  EL.bkBank.value  || DEFAULT_BANK.bank,
+    acno:  EL.bkAcno.value  || DEFAULT_BANK.acno,
+    ifsc:  EL.bkIfsc.value  || DEFAULT_BANK.ifsc,
   };
-  document.getElementById('wa-msg').value=`🙏 *Kagdiyal Holidays*\n\nDear ${nm},\n\nYour Bill No. *${bn}* dated *${bd}* is ready.\n\n💰 Amount: *${f(gr)}*\n${bl>0?`🔴 Balance Due: *${f(bl)}*`:'✅ *FULLY PAID*'}\n\n🏦 Payment:\n${bk.bank} | A/C: ${bk.acno}\nIFSC: ${bk.ifsc}\n\nThank you for choosing Kagdiyal Holidays! 🚗`;
+  EL.waMsg.value=`🙏 *Kagdiyal Holidays*\n\nDear ${nm},\n\nYour Bill No. *${bn}* dated *${bd}* is ready.\n\n💰 Amount: *${fmt(gr)}*\n${bl>0?`🔴 Balance Due: *${fmt(bl)}*`:'✅ *FULLY PAID*'}\n\n🏦 Payment:\n${bk.bank} | A/C: ${bk.acno}\nIFSC: ${bk.ifsc}\n\nThank you for choosing Kagdiyal Holidays! 🚗`;
 }
 function openWA(){
   const ph=document.getElementById('cph').value.replace(/\D/g,'');
@@ -1043,7 +1072,6 @@ function copyWA(){navigator.clipboard.writeText(document.getElementById('wa-msg'
 
 /* ── GENERATE BILL HTML (shared by PDF + reprint) ── */
 function buildBillHTML(b){
-  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
   const items=b.items||[];
   const bk=b.bank_details||DEFAULT_BANK;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill #${b.bill_no}</title>
@@ -1097,7 +1125,7 @@ function buildBillHTML(b){
   </div>
   <table>
     <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
-    <tbody>${items.map(i=>`<tr><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td><td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td></tr>`).join('')}</tbody>
+    <tbody>${items.map(i=>`<tr><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td><td>${fmt(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fmt(i.amount)}</td></tr>`).join('')}</tbody>
   </table>
   <div class="smry">
     <div class="bank"><h4>🏦 Bank Details</h4>
@@ -1108,14 +1136,14 @@ function buildBillHTML(b){
       <div class="br"><span class="l">Branch</span><span class="v">${bk.branch}</span></div>
     </div>
     <div class="tax">
-      <div class="tr2"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
-      ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
-      ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
-      ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
-      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
-      ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
-      <div class="gtotal"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
-      <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+      <div class="tr2"><span>Subtotal</span><strong>${fmt(b.subtotal)}</strong></div>
+      ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
+      ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
+      ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
+      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+      ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
+      <div class="gtotal"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
+      <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
     </div>
   </div>
   <div class="words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>
@@ -1322,11 +1350,12 @@ function resetBill(){
 
 /* ── LOAD BILLS ── */
 async function loadBills(){
+  EL.billsList.innerHTML='<div class="loading">⏳ Bills load ho rahe hain...</div>';
   const {data,error}=await sb.from('bills').select('id,bill_no,bill_date,is_gst,cust_name,cust_guest,cust_phone,cust_address,cust_gstin,cust_state,cust_booked,subtotal,cgst,sgst,igst,cgst_pct,sgst_pct,igst_pct,extra_charges,advance,grand_total,balance_due,bank_details,created_at').order('created_at',{ascending:false});
-  if(error){document.getElementById('bills-list').innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
+  if(error){EL.billsList.innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
   allBills=data||[];billsLoaded=true;renderBills(allBills);
 }
-function f(n){return'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+const f = fmt;
 function renderBills(bills){
   if(!bills.length){document.getElementById('bills-list').innerHTML='<div class="empty">No bills yet.</div>';return;}
   document.getElementById('bills-list').innerHTML=`
@@ -1413,7 +1442,7 @@ async function viewBill(id){
   viewingBillId=id;
   document.getElementById('view-modal-title').textContent=`📄 Bill #${b.bill_no} — ${b.cust_name||''}`;
   const items=b.items||[];
-  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  
   document.getElementById('view-modal-body').innerHTML=`
     <div class="bd-top">
       <div class="bd-co">
@@ -1440,7 +1469,7 @@ async function viewBill(id){
       <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
       <tbody>${items.map(i=>`<tr>
         <td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td>
-        <td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td>
+        <td>${fmt(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fmt(i.amount)}</td>
       </tr>`).join('')}</tbody>
     </table>
     <div class="bd-summary">
@@ -1454,14 +1483,14 @@ async function viewBill(id){
         <div class="bd-row"><span class="lbl">IFSC</span><span class="val">${bk.ifsc}</span></div>`;})()}
       </div>
       <div class="bd-tax">
-        <div class="bd-tax-row"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
-        ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
-        ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
-        ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
-        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
-        ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
-        <div class="bd-total"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
-        <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+        <div class="bd-tax-row"><span>Subtotal</span><strong>${fmt(b.subtotal)}</strong></div>
+        ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
+        ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
+        ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
+        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+        ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
+        <div class="bd-total"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
+        <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
       </div>
     </div>
     <div class="bd-words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>`;
@@ -1547,14 +1576,14 @@ function calcEdit(){
     const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
     const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
     const a=r*q; sub+=a;
-    tr.querySelector('.amt-c').textContent='₹'+a.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    tr.querySelector('.amt-c').textContent=fmt(a);
   });
   const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
   const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
   const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
   const ex=parseFloat(document.getElementById('edit-extra').value)||0;
   const gr=sub+cg+sg+ig+ex;
-  document.getElementById('edit-grand').value='₹'+gr.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('edit-grand').value=fmt(gr);
 }
 async function saveEditBill(){
   const id=document.getElementById('edit-id').value;
@@ -1602,8 +1631,9 @@ async function saveEditBill(){
 
 /* ── CUSTOMERS ── */
 async function loadCusts(){
+  EL.custList.innerHTML='<div class="loading">⏳ Customers load ho rahe hain...</div>';
   const {data,error}=await sb.from('customers').select('*').order('name');
-  if(error){document.getElementById('cust-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
+  if(error){EL.custList.innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
   allCusts=data||[];custsLoaded=true;
   renderCustList();
 }
