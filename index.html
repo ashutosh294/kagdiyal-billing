@@ -868,9 +868,13 @@ async function fetchNextBillNo(){
   el.style.background='#eef2f7';
   el.style.color='#555';
   el.title='Auto-set — click ✏️ to edit manually';
-  const{data,error}=await sb.from('bills').select('bill_no').order('bill_no',{ascending:false}).limit(1);
-  if(!error && data){
-    el.value = data.length ? (data[0].bill_no + 1) : 1;
+  // Use allBills local cache — no DB round-trip needed
+  if(allBills.length){
+    const maxNo=Math.max(...allBills.map(b=>b.bill_no||0));
+    el.value=maxNo+1;
+  } else {
+    const{data,error}=await sb.from('bills').select('bill_no').order('bill_no',{ascending:false}).limit(1);
+    if(!error && data){ el.value=data.length?(data[0].bill_no+1):1; }
   }
   // reset edit button style
   const btn=document.getElementById('bill-no-edit-btn');
@@ -1177,8 +1181,12 @@ async function sendPDFtoWA(){
 
 /* ── PDF + WHATSAPP (from history) ── */
 async function reprintAndShareWA(id){
-  const b=allBills.find(x=>x.id===id);
+  let b=allBills.find(x=>x.id===id);
   if(!b) return;
+  if(!b.items){
+    const{data}=await sb.from('bills').select('*').eq('id',id).single();
+    if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
+  }
   const statusKey='wa-status-'+id;
   let statusEl=document.getElementById(statusKey);
   if(!statusEl){
@@ -1235,9 +1243,8 @@ async function saveBill(){
   const billNo=parseInt(document.getElementById('bill-no').value);
   if(!billNo){toast('Bill number missing!','error');return;}
 
-  // Duplicate check
-  const{data:dup}=await sb.from('bills').select('id').eq('bill_no',billNo).limit(1);
-  if(dup&&dup.length){
+  // Duplicate check — use local cache, no DB round-trip
+  if(allBills.some(b=>b.bill_no===billNo)){
     toast(`⚠️ Bill #${billNo} already exists! Check history.`,'error');
     return;
   }
@@ -1275,8 +1282,13 @@ async function saveBill(){
     igst_pct:parseFloat(document.getElementById('igst-p').value)||0,
     bank_details: bankData,
   }]);
-  if(error) toast('Error: '+error.message,'error');
-  else{toast('Bill saved! ✅','success');await fetchNextBillNo();}
+  if(error){toast('Error: '+error.message,'error');}
+  else{
+    const{data:nb}=await sb.from('bills').select('id,bill_no,bill_date,is_gst,cust_name,cust_guest,cust_phone,cust_address,cust_gstin,cust_state,cust_booked,subtotal,cgst,sgst,igst,cgst_pct,sgst_pct,igst_pct,extra_charges,advance,grand_total,balance_due,bank_details,created_at').eq('bill_no',billNo).single();
+    if(nb){allBills.unshift(nb);renderBills(allBills);loadDash();}
+    toast('Bill saved! ✅','success');
+    await fetchNextBillNo();
+  }
 }
 
 function resetBill(){
@@ -1294,7 +1306,7 @@ function resetBill(){
 
 /* ── LOAD BILLS ── */
 async function loadBills(){
-  const {data,error}=await sb.from('bills').select('*').order('created_at',{ascending:false});
+  const {data,error}=await sb.from('bills').select('id,bill_no,bill_date,is_gst,cust_name,cust_guest,cust_phone,cust_address,cust_gstin,cust_state,cust_booked,subtotal,cgst,sgst,igst,cgst_pct,sgst_pct,igst_pct,extra_charges,advance,grand_total,balance_due,bank_details,created_at').order('created_at',{ascending:false});
   if(error){document.getElementById('bills-list').innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
   allBills=data||[];renderBills(allBills);
 }
@@ -1322,14 +1334,19 @@ function renderBills(bills){
     </table>`;
 }
 function filterBills(){const q=document.getElementById('srch').value.toLowerCase();renderBills(allBills.filter(b=>(b.cust_name||'').toLowerCase().includes(q)||String(b.bill_no).includes(q)||(b.cust_guest||'').toLowerCase().includes(q)));}
-async function delBill(id){if(!confirm('Delete this bill?')) return;const{error}=await sb.from('bills').delete().eq('id',id);if(error) toast('Error: '+error.message,'error');else{toast('Deleted','success');loadBills();}}
+async function delBill(id){if(!confirm('Delete this bill?')) return;const{error}=await sb.from('bills').delete().eq('id',id);if(error){toast('Error: '+error.message,'error');}else{allBills=allBills.filter(x=>x.id!==id);renderBills(allBills);loadDash();toast('Deleted ✅','success');}}
 
 /* ── DUES ── */
 let allDues=[];
 async function loadDues(){
-  const{data,error}=await sb.from('bills').select('*').gt('balance_due',0).order('bill_date',{ascending:true});
-  if(error){document.getElementById('dues-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
-  allDues=data||[];
+  // Derive from allBills if available — no extra DB call needed
+  if(allBills.length){
+    allDues=[...allBills].filter(b=>(b.balance_due||0)>0).sort((a,b)=>new Date(a.bill_date)-new Date(b.bill_date));
+  } else {
+    const{data,error}=await sb.from('bills').select('id,bill_no,bill_date,cust_name,cust_guest,cust_phone,grand_total,balance_due,bank_details').gt('balance_due',0).order('bill_date',{ascending:true});
+    if(error){document.getElementById('dues-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
+    allDues=data||[];
+  }
   // Stats
   const total=allDues.reduce((s,b)=>s+(b.balance_due||0),0);
   document.getElementById('due-count').textContent=allDues.length;
@@ -1362,7 +1379,7 @@ async function markPaid(id){
   if(!confirm('Mark this bill as FULLY PAID? Balance will be set to 0.')) return;
   const{error}=await sb.from('bills').update({balance_due:0}).eq('id',id);
   if(error) toast('Error: '+error.message,'error');
-  else{toast('Marked as Paid ✅','success');loadDues();loadBills();}
+  else{const b=allBills.find(x=>x.id===id);if(b)b.balance_due=0;allDues=allDues.filter(x=>x.id!==id);renderDues(allDues);renderBills(allBills);loadDash();const t=allDues.reduce((s,x)=>s+(x.balance_due||0),0);document.getElementById('due-count').textContent=allDues.length;document.getElementById('due-total').textContent=f(t);document.getElementById('due-oldest').textContent=allDues.length?`#${allDues[0].bill_no} — ${allDues[0].bill_date||'?'}`:'None';toast('Marked as Paid ✅','success');}
 }
 
 /* ── MODAL HELPERS ── */
@@ -1370,9 +1387,13 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 let viewingBillId=null;
 
 /* ── VIEW BILL ── */
-function viewBill(id){
-  const b=allBills.find(x=>x.id===id);
+async function viewBill(id){
+  let b=allBills.find(x=>x.id===id);
   if(!b) return;
+  if(!b.items){
+    const{data}=await sb.from('bills').select('*').eq('id',id).single();
+    if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
+  }
   viewingBillId=id;
   document.getElementById('view-modal-title').textContent=`📄 Bill #${b.bill_no} — ${b.cust_name||''}`;
   const items=b.items||[];
@@ -1439,9 +1460,13 @@ function printFromView(){
 }
 
 /* ── REPRINT BILL ── */
-function reprintBill(id){
-  const b=allBills.find(x=>x.id===id);
+async function reprintBill(id){
+  let b=allBills.find(x=>x.id===id);
   if(!b) return;
+  if(!b.items){
+    const{data}=await sb.from('bills').select('*').eq('id',id).single();
+    if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
+  }
   const win=window.open('','_blank','width=900,height=700');
   const html=buildBillHTML(b).replace('</body>','<script>window.onload=()=>{window.print();}<\/script></body>');
   win.document.write(html);
@@ -1449,9 +1474,13 @@ function reprintBill(id){
 }
 
 /* ── EDIT BILL ── */
-function editBill(id){
-  const b=allBills.find(x=>x.id===id);
+async function editBill(id){
+  let b=allBills.find(x=>x.id===id);
   if(!b) return;
+  if(!b.items){
+    const{data}=await sb.from('bills').select('*').eq('id',id).single();
+    if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
+  }
   document.getElementById('edit-id').value=b.id;
   document.getElementById('edit-bill-no').value=b.bill_no||'';
   document.getElementById('edit-bill-date').value=b.bill_date||'';
@@ -1545,8 +1574,14 @@ async function saveEditBill(){
     cgst_pct:cgp,sgst_pct:sgp,igst_pct:igp,
     bank_details:(()=>{const bk={bank:document.getElementById('ebk-bank').value||DEFAULT_BANK.bank,name:document.getElementById('ebk-name').value||DEFAULT_BANK.name,acno:document.getElementById('ebk-acno').value||DEFAULT_BANK.acno,branch:document.getElementById('ebk-branch').value||DEFAULT_BANK.branch,ifsc:document.getElementById('ebk-ifsc').value||DEFAULT_BANK.ifsc};return JSON.stringify(bk)===JSON.stringify(DEFAULT_BANK)?null:bk;})(),
   }).eq('id',id);
-  if(error) toast('Error: '+error.message,'error');
-  else{toast('Bill updated! ✅','success');closeModal('edit-modal');loadBills();}
+  if(error){toast('Error: '+error.message,'error');}
+  else{
+    const{data:ub}=await sb.from('bills').select('*').eq('id',id).single();
+    if(ub){const idx=allBills.findIndex(x=>x.id==id);if(idx>=0)allBills[idx]=ub;}
+    renderBills(allBills);loadDash();
+    closeModal('edit-modal');
+    toast('Bill updated! ✅','success');
+  }
 }
 
 /* ── CUSTOMERS ── */
@@ -1554,6 +1589,9 @@ async function loadCusts(){
   const {data,error}=await sb.from('customers').select('*').order('name');
   if(error){document.getElementById('cust-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
   allCusts=data||[];
+  renderCustList();
+}
+function renderCustList(){
   const sel=document.getElementById('cust-select');
   sel.innerHTML='<option value="">— Select —</option>'+allCusts.map(c=>`<option value="${c.id}">${c.name}${c.company_name?' ('+c.company_name+')':''}</option>`).join('');
   if(!allCusts.length){document.getElementById('cust-list').innerHTML='<div class="empty">No customers yet.</div>';return;}
@@ -1574,10 +1612,15 @@ async function saveCustomer(){
   const nm=document.getElementById('nc-name').value;
   if(!nm){toast('Name required!','error');return;}
   const{error}=await sb.from('customers').insert([{name:nm,company_name:document.getElementById('nc-co').value,address:document.getElementById('nc-addr').value,gstin:document.getElementById('nc-gstin').value,phone:document.getElementById('nc-ph').value,email:document.getElementById('nc-em').value}]);
-  if(error) toast('Error: '+error.message,'error');
-  else{toast('Customer added! ✅','success');['nc-name','nc-co','nc-addr','nc-gstin','nc-ph','nc-em'].forEach(id=>document.getElementById(id).value='');loadCusts();}
+  if(error){toast('Error: '+error.message,'error');}
+  else{
+    const{data:nc}=await sb.from('customers').select('*').order('created_at',{ascending:false}).limit(1).single();
+    if(nc){allCusts.push(nc);allCusts.sort((a,b)=>(a.name||'').localeCompare(b.name||''));renderCustList();}
+    ['nc-name','nc-co','nc-addr','nc-gstin','nc-ph','nc-em'].forEach(id=>document.getElementById(id).value='');
+    toast('Customer added! ✅','success');
+  }
 }
-async function delCust(id){if(!confirm('Delete customer?')) return;const{error}=await sb.from('customers').delete().eq('id',id);if(error) toast('Error: '+error.message,'error');else{toast('Deleted','success');loadCusts();}}
+async function delCust(id){if(!confirm('Delete customer?')) return;const{error}=await sb.from('customers').delete().eq('id',id);if(error){toast('Error: '+error.message,'error');}else{allCusts=allCusts.filter(x=>x.id!==id);renderCustList();toast('Deleted ✅','success');}}
 
 /* ── DASHBOARD ── */
 function loadDash(){
