@@ -769,11 +769,18 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 <script>
 /* ══════════════════════════════════════════
    🔐 LOGIN & SESSION SECURITY
-   Password change karne ke liye neeche
-   APP_PASS ki value badlo
+   Password change karne ke liye:
+   APP_PASS_HASH ko neeche update karo.
+   Hash generate karne ka tarika:
+     1. Browser console kholein (F12)
+     2. Yeh paste karein:
+        crypto.subtle.digest('SHA-256', new TextEncoder().encode('APNA_PASSWORD'))
+          .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+     3. Jo hash aaye woh neeche replace karein
 ══════════════════════════════════════════ */
-const APP_PASS = 'kagdiyal2025'; // ← APNA PASSWORD YAHAN BADLE
-const SESSION_KEY = 'kh_auth_v1';
+// SHA-256 hash of 'kagdiyal2025'
+const APP_PASS_HASH = 'e1d34de2b0da84a61c69f5f794762e08610a60ad67286506a901c257b3257af6';
+const SESSION_KEY = 'kh_auth_v2';
 const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 ghante
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000; // 15 min lockout
@@ -781,12 +788,17 @@ const LOCKOUT_TIME = 15 * 60 * 1000; // 15 min lockout
 let loginAttempts = parseInt(sessionStorage.getItem('kh_attempts') || '0');
 let lockoutUntil = parseInt(sessionStorage.getItem('kh_lockout') || '0');
 
+async function hashPass(pass) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+  return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
 function checkSession() {
   const sess = sessionStorage.getItem(SESSION_KEY);
   if (!sess) return false;
   try {
     const { token, ts } = JSON.parse(sess);
-    if (token !== btoa(APP_PASS) || Date.now() - ts > SESSION_TIMEOUT) {
+    if (token !== APP_PASS_HASH || Date.now() - ts > SESSION_TIMEOUT) {
       sessionStorage.removeItem(SESSION_KEY);
       return false;
     }
@@ -799,7 +811,7 @@ function startApp() {
   document.getElementById('app-content').style.display = 'block';
 }
 
-function doLogin() {
+async function doLogin() {
   const now = Date.now();
   if (lockoutUntil > now) {
     const mins = Math.ceil((lockoutUntil - now) / 60000);
@@ -807,8 +819,9 @@ function doLogin() {
     return;
   }
   const entered = document.getElementById('login-pass').value;
-  if (entered === APP_PASS) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: btoa(APP_PASS), ts: now }));
+  const enteredHash = await hashPass(entered);
+  if (enteredHash === APP_PASS_HASH) {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: APP_PASS_HASH, ts: now }));
     sessionStorage.removeItem('kh_attempts');
     sessionStorage.removeItem('kh_lockout');
     loginAttempts = 0;
@@ -849,6 +862,7 @@ const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const sb = supabase.createClient(SURL, SKEY);
 
 let isGST = true, allBills = [], allCusts = [];
+let billsLoaded = false, custsLoaded = false;
 
 const VEHICLES = ['Swift Dzire','Toyota Innova','Innova Crysta','Tempo Traveller','Mini Bus','Luxury Bus','Maruti Ertiga','Toyota Fortuner','ERTIGA 7778','SEDAN 1980','INNOVA 1234','CRYSTA 5678'];
 const ROUTES   = ['Delhi Local — Full Day (8 hrs / 80 km)','Delhi Local — Half Day (4 hrs / 40 km)','Delhi → Agra → Delhi (Day Trip)','Delhi → Jaipur → Delhi','IGI Airport → Hotel (Transfer)','Hotel → IGI Airport (Transfer)','Delhi → Shimla Tour (2N/3D)','Rajasthan Tour (5N/6D)','Golden Triangle (Delhi-Agra-Jaipur 3N/4D)','Outstation — Per Day Charge','Wedding / Event Booking','Corporate Monthly Package','EX HR','EX KM','NIGHT CHARGES','AIRPORT PARKING'];
@@ -911,8 +925,8 @@ function showPage(p, el) {
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
-  if(p==='history') loadBills();
-  if(p==='customers') loadCusts();
+  if(p==='history') { if(!billsLoaded) loadBills(); else renderBills(allBills); }
+  if(p==='customers') { if(!custsLoaded) loadCusts(); else { renderCustList(); } }
   if(p==='dashboard') loadDash();
   if(p==='dues') loadDues();
 }
@@ -1185,7 +1199,7 @@ async function sendPDFtoWA(){
 async function reprintAndShareWA(id){
   let b=allBills.find(x=>x.id===id);
   if(!b) return;
-  if(!b.items){
+  if(b.items === undefined){
     const{data}=await sb.from('bills').select('*').eq('id',id).single();
     if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
   }
@@ -1310,7 +1324,7 @@ function resetBill(){
 async function loadBills(){
   const {data,error}=await sb.from('bills').select('id,bill_no,bill_date,is_gst,cust_name,cust_guest,cust_phone,cust_address,cust_gstin,cust_state,cust_booked,subtotal,cgst,sgst,igst,cgst_pct,sgst_pct,igst_pct,extra_charges,advance,grand_total,balance_due,bank_details,created_at').order('created_at',{ascending:false});
   if(error){document.getElementById('bills-list').innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
-  allBills=data||[];renderBills(allBills);
+  allBills=data||[];billsLoaded=true;renderBills(allBills);
 }
 function f(n){return'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function renderBills(bills){
@@ -1392,7 +1406,7 @@ let viewingBillId=null;
 async function viewBill(id){
   let b=allBills.find(x=>x.id===id);
   if(!b) return;
-  if(!b.items){
+  if(b.items === undefined){
     const{data}=await sb.from('bills').select('*').eq('id',id).single();
     if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
   }
@@ -1465,7 +1479,7 @@ function printFromView(){
 async function reprintBill(id){
   let b=allBills.find(x=>x.id===id);
   if(!b) return;
-  if(!b.items){
+  if(b.items === undefined){
     const{data}=await sb.from('bills').select('*').eq('id',id).single();
     if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
   }
@@ -1479,7 +1493,7 @@ async function reprintBill(id){
 async function editBill(id){
   let b=allBills.find(x=>x.id===id);
   if(!b) return;
-  if(!b.items){
+  if(b.items === undefined){
     const{data}=await sb.from('bills').select('*').eq('id',id).single();
     if(data){b=data;const idx=allBills.findIndex(x=>x.id===id);if(idx>=0)allBills[idx]=data;}
   }
@@ -1590,7 +1604,7 @@ async function saveEditBill(){
 async function loadCusts(){
   const {data,error}=await sb.from('customers').select('*').order('name');
   if(error){document.getElementById('cust-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
-  allCusts=data||[];
+  allCusts=data||[];custsLoaded=true;
   renderCustList();
 }
 function renderCustList(){
@@ -1613,11 +1627,10 @@ function renderCustList(){
 async function saveCustomer(){
   const nm=document.getElementById('nc-name').value;
   if(!nm){toast('Name required!','error');return;}
-  const{error}=await sb.from('customers').insert([{name:nm,company_name:document.getElementById('nc-co').value,address:document.getElementById('nc-addr').value,gstin:document.getElementById('nc-gstin').value,phone:document.getElementById('nc-ph').value,email:document.getElementById('nc-em').value}]);
+  const{data:inserted,error}=await sb.from('customers').insert([{name:nm,company_name:document.getElementById('nc-co').value,address:document.getElementById('nc-addr').value,gstin:document.getElementById('nc-gstin').value,phone:document.getElementById('nc-ph').value,email:document.getElementById('nc-em').value}]).select().single();
   if(error){toast('Error: '+error.message,'error');}
   else{
-    const{data:nc}=await sb.from('customers').select('*').order('created_at',{ascending:false}).limit(1).single();
-    if(nc){allCusts.push(nc);allCusts.sort((a,b)=>(a.name||'').localeCompare(b.name||''));renderCustList();}
+    if(inserted){allCusts.push(inserted);allCusts.sort((a,b)=>(a.name||'').localeCompare(b.name||''));renderCustList();}
     ['nc-name','nc-co','nc-addr','nc-gstin','nc-ph','nc-em'].forEach(id=>document.getElementById(id).value='');
     toast('Customer added! ✅','success');
   }
@@ -1656,9 +1669,16 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 /* ── EXCEL EXPORT ── */
 async function exportExcel(type='all'){
   toast('Preparing Excel...','');
-  // Fetch fresh data
-  const{data:bills}=await sb.from('bills').select('*').order('bill_no',{ascending:true});
-  if(!bills||!bills.length){toast('No data to export','error');return;}
+  // allBills local cache use karo — no extra DB call needed
+  if(!allBills||!allBills.length){toast('No data to export','error');return;}
+  // items bhi chahiye — jo bills mein nahi hain unhe fetch karo
+  const needItems=allBills.filter(b=>!b.items);
+  if(needItems.length){
+    const ids=needItems.map(b=>b.id);
+    const{data:withItems}=await sb.from('bills').select('*').in('id',ids);
+    if(withItems) withItems.forEach(b=>{const idx=allBills.findIndex(x=>x.id===b.id);if(idx>=0)allBills[idx]=b;});
+  }
+  const bills=[...allBills].sort((a,b)=>a.bill_no-b.bill_no);
 
   const now=new Date();
   let data=bills;
