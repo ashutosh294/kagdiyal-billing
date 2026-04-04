@@ -843,10 +843,8 @@ window.onload = async () => {
   document.getElementById('rlist').innerHTML = ROUTES.map(r=>`<option value="${r}">`).join('');
   addRow(); addRow(); addRow();
   loadSavedBank();
-  await loadCusts();
-  await loadBills();
-  await loadDash();
-  await fetchNextBillNo();
+  await Promise.all([loadCusts(), loadBills(), fetchNextBillNo()]);
+  loadDash();
 };
 
 /* ── AUTO BILL NUMBER ── */
@@ -1561,25 +1559,24 @@ async function saveCustomer(){
 async function delCust(id){if(!confirm('Delete customer?')) return;const{error}=await sb.from('customers').delete().eq('id',id);if(error) toast('Error: '+error.message,'error');else{toast('Deleted','success');loadCusts();}}
 
 /* ── DASHBOARD ── */
-async function loadDash(){
-  const{data:bills}=await sb.from('bills').select('*').order('created_at',{ascending:false});
-  const{data:custs}=await sb.from('customers').select('id');
-  const b=bills||[],now=new Date();
+function loadDash(){
+  const b=[...allBills].sort((a,z)=>new Date(z.bill_date)-new Date(a.bill_date));
+  const now=new Date();
   const thisMonth=b.filter(x=>new Date(x.bill_date).getMonth()===now.getMonth()&&new Date(x.bill_date).getFullYear()===now.getFullYear());
   document.getElementById('st-bills').textContent=b.length;
   document.getElementById('st-rev').textContent=f(b.reduce((s,x)=>s+(x.grand_total||0),0));
   document.getElementById('st-mon').textContent=thisMonth.length+' bills';
-  document.getElementById('st-cust').textContent=(custs||[]).length;
+  document.getElementById('st-cust').textContent=allCusts.length;
   const recent=b.slice(0,8);
   document.getElementById('dash-recent').innerHTML=recent.length?`
     <table class="hist-table">
       <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance</th></tr></thead>
-      <tbody>${recent.map(b=>`<tr>
-        <td data-label="Bill No">#${b.bill_no}</td>
-        <td data-label="Date">${b.bill_date||'—'}</td>
-        <td data-label="Customer">${b.cust_name||'—'}</td>
-        <td data-label="Total">${f(b.grand_total||0)}</td>
-        <td data-label="Balance">${b.balance_due>0?`<span class="badge badge-unpaid">${f(b.balance_due)}</span>`:'<span class="badge badge-paid">PAID</span>'}</td>
+      <tbody>${recent.map(x=>`<tr>
+        <td data-label="Bill No">#${x.bill_no}</td>
+        <td data-label="Date">${x.bill_date||'—'}</td>
+        <td data-label="Customer">${x.cust_name||'—'}</td>
+        <td data-label="Total">${f(x.grand_total||0)}</td>
+        <td data-label="Balance">${x.balance_due>0?`<span class="badge badge-unpaid">${f(x.balance_due)}</span>`:'<span class="badge badge-paid">PAID</span>'}</td>
       </tr>`).join('')}</tbody>
     </table>`:'<div class="empty">No bills yet.</div>';
 }
