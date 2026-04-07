@@ -66,6 +66,19 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .trip-table input.tl{text-align:left;}
 .trip-table .amt-cell{text-align:right;font-weight:700;color:var(--bd);padding-right:6px;white-space:nowrap;}
 .del-btn{background:#fee2e2;border:1px solid #fca5a5;color:var(--rd);border-radius:5px;padding:4px 8px;cursor:pointer;font-size:12px;}
+/* ── EXTRA KM/HR COLUMNS ── */
+.ex-toggle{background:#fff8e1;border:1px solid #F4B942;color:#854d0e;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
+.ex-toggle.active{background:#F4B942;color:#333;}
+.ex-expand{background:#FFF8E7;border-top:none;}
+.ex-expand td{padding:2px 0 2px 4px!important;border-bottom:1px dashed #f0e0a0!important;}
+.ex-expand .ex-fields{display:grid;grid-template-columns:88px 60px 14px 60px 88px 60px 14px 60px auto;align-items:center;gap:3px;padding:1px 0;}
+.ex-expand .ex-lbl{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;white-space:nowrap;text-align:right;padding-right:3px;}
+.ex-expand .ex-sep{font-size:10px;color:#aaa;text-align:center;}
+.ex-expand .ex-grp-inp{width:100%;padding:3px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;text-align:center;font-weight:700;background:#fff;}
+.ex-expand .ex-grp-inp:focus{outline:none;background:#fff8e1;border-color:var(--bm);}
+.ex-expand .ex-total{font-size:11px;font-weight:800;color:var(--bd);white-space:nowrap;text-align:right;}
+
+
 
 /* ── TOTALS ── */
 .totals-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
@@ -211,6 +224,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 
   /* Mobile header bar */
   body::before{content:'Kagdiyal Holidays';display:block;background:var(--bd);color:#fff;padding:14px 16px;font-size:16px;font-weight:800;position:sticky;top:0;z-index:99;}
+
 
   /* Bill top — single column */
   .bill-top{grid-template-columns:1fr;}
@@ -556,10 +570,10 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
             <th style="width:90px">Date</th>
             <th style="width:120px">Vehicle</th>
             <th>Route / Duty</th>
-            <th style="width:90px">Rate (₹)</th>
-            <th style="width:55px">Qty</th>
-            <th style="width:100px">Amount (₹)</th>
-            <th style="width:36px" class="no-print"></th>
+            <th style="width:80px">Rate (₹)</th>
+            <th style="width:50px">Qty</th>
+            <th style="width:90px">Amount (₹)</th>
+            <th style="width:70px" class="no-print"></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -867,10 +881,42 @@ let billsLoaded = false, custsLoaded = false;
 const VEHICLES = ['Swift Dzire','Toyota Innova','Innova Crysta','Tempo Traveller','Mini Bus','Luxury Bus','Maruti Ertiga','Toyota Fortuner','ERTIGA 7778','SEDAN 1980','INNOVA 1234','CRYSTA 5678'];
 const ROUTES   = ['Delhi Local — Full Day (8 hrs / 80 km)','Delhi Local — Half Day (4 hrs / 40 km)','Delhi → Agra → Delhi (Day Trip)','Delhi → Jaipur → Delhi','IGI Airport → Hotel (Transfer)','Hotel → IGI Airport (Transfer)','Delhi → Shimla Tour (2N/3D)','Rajasthan Tour (5N/6D)','Golden Triangle (Delhi-Agra-Jaipur 3N/4D)','Outstation — Per Day Charge','Wedding / Event Booking','Corporate Monthly Package','EX HR','EX KM','NIGHT CHARGES','AIRPORT PARKING'];
 
+/* ── GLOBAL HELPERS ── */
+const INR = new Intl.NumberFormat('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt = n => '₹' + INR.format(Number(n)||0);
+function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+const dCalc = debounce(()=>calc());
+
 window.onload = async () => {
   document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('vlist').innerHTML = VEHICLES.map(v=>`<option value="${v}">`).join('');
   document.getElementById('rlist').innerHTML = ROUTES.map(r=>`<option value="${r}">`).join('');
+
+  /* ── DOM ELEMENT CACHE ── */
+  window.EL = {
+    cgstP:    document.getElementById('cgst-p'),
+    sgstP:    document.getElementById('sgst-p'),
+    igstP:    document.getElementById('igst-p'),
+    extra:    document.getElementById('extra'),
+    adv:      document.getElementById('adv'),
+    subtotal: document.getElementById('subtotal'),
+    cgstA:    document.getElementById('cgst-a'),
+    sgstA:    document.getElementById('sgst-a'),
+    igstA:    document.getElementById('igst-a'),
+    grand:    document.getElementById('grand'),
+    bal:      document.getElementById('bal'),
+    words:    document.getElementById('words'),
+    cn:       document.getElementById('cn'),
+    billNo:   document.getElementById('bill-no'),
+    billDate: document.getElementById('bill-date'),
+    bkBank:   document.getElementById('bk-bank'),
+    bkAcno:   document.getElementById('bk-acno'),
+    bkIfsc:   document.getElementById('bk-ifsc'),
+    waMsg:    document.getElementById('wa-msg'),
+    billsList:document.getElementById('bills-list'),
+    custList: document.getElementById('cust-list'),
+    tbody:    document.getElementById('tbody'),
+  };
   addRow(); addRow(); addRow();
   loadSavedBank();
   await Promise.all([loadCusts(), loadBills(), fetchNextBillNo()]);
@@ -965,43 +1011,98 @@ function setGST(v) {
 }
 
 /* ── ROWS ── */
-function addRow() {
+function addRow(d={}) {
+  const hasEx = d.ex_km||d.ex_km_rate||d.ex_hr||d.ex_hr_rate;
   const tr = document.createElement('tr');
+  tr.dataset.rowId = 'r' + Date.now() + Math.floor(Math.random()*10000);
   tr.innerHTML = `
-    <td data-label="Date"><input type="date" class="r-date tl" oninput="calc()"></td>
-    <td data-label="Vehicle"><input type="text" class="r-veh tl" placeholder="Vehicle / No." list="vlist" autocomplete="off"></td>
-    <td data-label="Route"><input type="text" class="r-rte tl" placeholder="Route / Duty" list="rlist" autocomplete="off"></td>
-    <td data-label="Rate (₹)"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" oninput="calc()"></td>
-    <td data-label="Qty"><input type="number" class="r-qty" value="1" min="0" step="0.5" inputmode="decimal" oninput="calc()"></td>
+    <td data-label="Date"><input type="date" class="r-date tl" value="${d.date||''}" oninput="calc()"></td>
+    <td data-label="Vehicle"><input type="text" class="r-veh tl" placeholder="Vehicle / No." list="vlist" autocomplete="off" value="${d.vehicle||''}"></td>
+    <td data-label="Route"><input type="text" class="r-rte tl" placeholder="Route / Duty" list="rlist" autocomplete="off" value="${d.desc||''}"></td>
+    <td data-label="Rate (₹)"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" value="${d.rate||''}" oninput="dCalc()"></td>
+    <td data-label="Qty"><input type="number" class="r-qty" value="${d.qty||1}" min="0" step="0.5" inputmode="decimal" oninput="dCalc()"></td>
     <td class="amt-cell" data-label="Amount">₹0.00</td>
-    <td class="no-print"><button class="del-btn" onclick="this.closest('tr').remove();calc()">✕</button></td>`;
-  document.getElementById('tbody').appendChild(tr);
+    <td class="no-print" style="white-space:nowrap;display:flex;gap:4px;padding:5px 4px;">
+      <button class="ex-toggle${hasEx?' active':''}" onclick="toggleExRow(this)" title="Extra KM / Hour charges">⚡ Extra</button>
+      <button class="del-btn" onclick="this.closest('tr').nextSibling?.classList?.contains('ex-expand')&&this.closest('tr').nextSibling.remove();this.closest('tr').remove();calc()">✕</button>
+    </td>`;
+  EL.tbody.appendChild(tr);
+  // Expand row for ex data if present
+  if(hasEx) insertExRow(tr, d);
 }
+
+function toggleExRow(btn){
+  const tr = btn.closest('tr');
+  const next = tr.nextElementSibling;
+  if(next && next.classList.contains('ex-expand')){
+    next.remove();
+    btn.classList.remove('active');
+    btn.textContent='⚡ Extra';
+  } else {
+    insertExRow(tr, {});
+    btn.classList.add('active');
+    btn.textContent='⚡ Extra';
+  }
+  calc();
+}
+
+function insertExRow(mainTr, d){
+  const exTr = document.createElement('tr');
+  exTr.classList.add('ex-expand','no-print-collapse');
+  exTr.innerHTML = `
+    <td colspan="7" class="no-print-collapse">
+      <div class="ex-fields">
+        <span class="ex-lbl">Ex KM</span>
+        <input type="number" class="r-exkm ex-grp-inp" placeholder="0" min="0" value="${d.ex_km||''}" oninput="calc()">
+        <span class="ex-sep">×</span>
+        <input type="number" class="r-exkmr ex-grp-inp" placeholder="₹/km" min="0" value="${d.ex_km_rate||''}" oninput="calc()">
+        <span class="ex-lbl">Ex Hour</span>
+        <input type="number" class="r-exhr ex-grp-inp" placeholder="0" min="0" value="${d.ex_hr||''}" oninput="calc()">
+        <span class="ex-sep">×</span>
+        <input type="number" class="r-exhrr ex-grp-inp" placeholder="₹/hr" min="0" value="${d.ex_hr_rate||''}" oninput="calc()">
+        <span class="ex-total" id="extot-${mainTr.dataset.rowId}"></span>
+      </div>
+    </td>`;
+  mainTr.after(exTr);
+}
+
 
 /* ── CALC ── */
 function calc() {
   let sub = 0;
-  document.querySelectorAll('#tbody tr').forEach(tr => {
-    const r = parseFloat(tr.querySelector('.r-rate')?.value)||0;
-    const q = parseFloat(tr.querySelector('.r-qty')?.value)||0;
-    const a = r*q; sub += a;
-    tr.querySelector('.amt-cell').textContent = '₹'+a.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  EL.tbody.querySelectorAll('tr:not(.ex-expand)').forEach(tr => {
+    const r   = parseFloat(tr.querySelector('.r-rate')?.value)||0;
+    const q   = parseFloat(tr.querySelector('.r-qty')?.value)||0;
+    // Read ex fields from sibling ex-expand row if present
+    const exTr = tr.nextElementSibling?.classList.contains('ex-expand') ? tr.nextElementSibling : null;
+    const km  = parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+    const kmr = parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+    const hr  = parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+    const hrr = parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+    const exAmt = (km*kmr)+(hr*hrr);
+    const a   = (r*q) + exAmt;
+    sub += a;
+    tr.querySelector('.amt-cell').textContent = fmt(a);
+    // Update ex subtotal label
+    if(exTr && tr.dataset.rowId){
+      const lbl = exTr.querySelector('#extot-'+tr.dataset.rowId);
+      if(lbl) lbl.textContent = exAmt>0 ? '= '+fmt(exAmt) : '';
+    }
   });
-  const cg = isGST ? sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100 : 0;
-  const sg = isGST ? sub*(parseFloat(document.getElementById('sgst-p').value)||0)/100 : 0;
-  const ig = isGST ? sub*(parseFloat(document.getElementById('igst-p').value)||0)/100 : 0;
-  const ex = parseFloat(document.getElementById('extra').value)||0;
-  const ad = parseFloat(document.getElementById('adv').value)||0;
+  const cg = isGST ? sub*(parseFloat(EL.cgstP.value)||0)/100 : 0;
+  const sg = isGST ? sub*(parseFloat(EL.sgstP.value)||0)/100 : 0;
+  const ig = isGST ? sub*(parseFloat(EL.igstP.value)||0)/100 : 0;
+  const ex = parseFloat(EL.extra.value)||0;
+  const ad = parseFloat(EL.adv.value)||0;
   const gr = sub+cg+sg+ig+ex;
   const bl = gr-ad;
-  const f  = n=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('subtotal').textContent = f(sub);
-  document.getElementById('cgst-a').textContent   = f(cg);
-  document.getElementById('sgst-a').textContent   = f(sg);
-  document.getElementById('igst-a').textContent   = f(ig);
-  document.getElementById('grand').textContent     = f(gr);
-  document.getElementById('bal').textContent       = bl<=0?'PAID ✅':f(bl);
-  document.getElementById('words').textContent     = 'Rs. '+n2w(Math.round(gr))+' Only /-';
+  EL.subtotal.textContent = fmt(sub);
+  EL.cgstA.textContent    = fmt(cg);
+  EL.sgstA.textContent    = fmt(sg);
+  EL.igstA.textContent    = fmt(ig);
+  EL.grand.textContent    = fmt(gr);
+  EL.bal.textContent      = bl<=0?'PAID ✅':fmt(bl);
+  EL.words.textContent    = 'Rs. '+n2w(Math.round(gr))+' Only /-';
   updateWA(gr,bl);
 }
 
@@ -1022,17 +1123,15 @@ function n2w(n){
 
 /* ── WHATSAPP ── */
 function updateWA(gr,bl){
-  const nm=document.getElementById('cn').value||'Customer';
-  const bn=document.getElementById('bill-no').value;
-  const bd=document.getElementById('bill-date').value;
-  const f=n=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  // Dynamic bank details from current box
+  const nm=EL.cn.value||'Customer';
+  const bn=EL.billNo.value;
+  const bd=EL.billDate.value;
   const bk={
-    bank:  document.getElementById('bk-bank').value  || DEFAULT_BANK.bank,
-    acno:  document.getElementById('bk-acno').value  || DEFAULT_BANK.acno,
-    ifsc:  document.getElementById('bk-ifsc').value  || DEFAULT_BANK.ifsc,
+    bank:  EL.bkBank.value  || DEFAULT_BANK.bank,
+    acno:  EL.bkAcno.value  || DEFAULT_BANK.acno,
+    ifsc:  EL.bkIfsc.value  || DEFAULT_BANK.ifsc,
   };
-  document.getElementById('wa-msg').value=`🙏 *Kagdiyal Holidays*\n\nDear ${nm},\n\nYour Bill No. *${bn}* dated *${bd}* is ready.\n\n💰 Amount: *${f(gr)}*\n${bl>0?`🔴 Balance Due: *${f(bl)}*`:'✅ *FULLY PAID*'}\n\n🏦 Payment:\n${bk.bank} | A/C: ${bk.acno}\nIFSC: ${bk.ifsc}\n\nThank you for choosing Kagdiyal Holidays! 🚗`;
+  EL.waMsg.value=`🙏 *Kagdiyal Holidays*\n\nDear ${nm},\n\nYour Bill No. *${bn}* dated *${bd}* is ready.\n\n💰 Amount: *${fmt(gr)}*\n${bl>0?`🔴 Balance Due: *${fmt(bl)}*`:'✅ *FULLY PAID*'}\n\n🏦 Payment:\n${bk.bank} | A/C: ${bk.acno}\nIFSC: ${bk.ifsc}\n\nThank you for choosing Kagdiyal Holidays! 🚗`;
 }
 function openWA(){
   const ph=document.getElementById('cph').value.replace(/\D/g,'');
@@ -1043,7 +1142,6 @@ function copyWA(){navigator.clipboard.writeText(document.getElementById('wa-msg'
 
 /* ── GENERATE BILL HTML (shared by PDF + reprint) ── */
 function buildBillHTML(b){
-  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
   const items=b.items||[];
   const bk=b.bank_details||DEFAULT_BANK;
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill #${b.bill_no}</title>
@@ -1097,7 +1195,12 @@ function buildBillHTML(b){
   </div>
   <table>
     <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
-    <tbody>${items.map(i=>`<tr><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td><td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td></tr>`).join('')}</tbody>
+    <tbody>${items.map(i=>{
+      const baseAmt=i.rate*(i.qty||1);
+      const exAmt=((i.ex_km||0)*(i.ex_km_rate||0))+((i.ex_hr||0)*(i.ex_hr_rate||0));
+      const exLine=(i.ex_km||i.ex_hr)?`<div style="font-size:6.5pt;color:#854d0e;margin-top:2pt;">${i.ex_km?i.ex_km+'km×₹'+i.ex_km_rate:''}${(i.ex_km&&i.ex_hr)?' + ':''}${i.ex_hr?i.ex_hr+'hr×₹'+i.ex_hr_rate:''} = ₹${exAmt}</div>`:'';
+      return`<tr${(i.ex_km||i.ex_hr)?' style="background:#FFF8E7;"':''}><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}${exLine}</td><td>${i.rate?fmt(i.rate):'—'}</td><td>${i.qty||'—'}</td><td style="font-weight:700;">${fmt(i.amount)}</td></tr>`;
+    }).join('')}</tbody>
   </table>
   <div class="smry">
     <div class="bank"><h4>🏦 Bank Details</h4>
@@ -1108,14 +1211,14 @@ function buildBillHTML(b){
       <div class="br"><span class="l">Branch</span><span class="v">${bk.branch}</span></div>
     </div>
     <div class="tax">
-      <div class="tr2"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
-      ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
-      ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
-      ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
-      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
-      ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
-      <div class="gtotal"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
-      <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+      <div class="tr2"><span>Subtotal</span><strong>${fmt(b.subtotal)}</strong></div>
+      ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
+      ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
+      ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
+      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+      ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
+      <div class="gtotal"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
+      <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
     </div>
   </div>
   <div class="words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>
@@ -1157,10 +1260,20 @@ async function sendPDFtoWA(){
   try{
     // Build a temp bill object from current form
     const items=[];
-    document.querySelectorAll('#tbody tr').forEach(tr=>{
+    document.querySelectorAll('#tbody tr:not(.ex-expand)').forEach(tr=>{
+      const date=tr.querySelector('.r-date')?.value||'';
+      const vehicle=tr.querySelector('.r-veh')?.value||'';
+      const desc=tr.querySelector('.r-rte')?.value||'';
       const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
       const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
-      if(r||q) items.push({date:tr.querySelector('.r-date')?.value,vehicle:tr.querySelector('.r-veh')?.value,desc:tr.querySelector('.r-rte')?.value,rate:r,qty:q,amount:r*q});
+      const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+      const km=parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+      const kmr=parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+      const hr=parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+      const hrr=parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+      const a=(r*q)+(km*kmr)+(hr*hrr);
+      if(a>0||r>0||km>0||hr>0)
+        items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
     });
     const sub=items.reduce((s,i)=>s+i.amount,0);
     const cg=isGST?sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100:0;
@@ -1266,10 +1379,20 @@ async function saveBill(){
   }
 
   const items=[];
-  document.querySelectorAll('#tbody tr').forEach(tr=>{
+  document.querySelectorAll('#tbody tr:not(.ex-expand)').forEach(tr=>{
+    const date=tr.querySelector('.r-date')?.value||'';
+    const vehicle=tr.querySelector('.r-veh')?.value||'';
+    const desc=tr.querySelector('.r-rte')?.value||'';
     const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
     const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
-    if(r||q) items.push({date:tr.querySelector('.r-date')?.value,vehicle:tr.querySelector('.r-veh')?.value,desc:tr.querySelector('.r-rte')?.value,rate:r,qty:q,amount:r*q});
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km=parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+    const hr=parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+    const a=(r*q)+(km*kmr)+(hr*hrr);
+    if(a>0||r>0||km>0||hr>0)
+      items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
   });
   const sub=items.reduce((s,i)=>s+i.amount,0);
   const cg=isGST?sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100:0;
@@ -1322,11 +1445,12 @@ function resetBill(){
 
 /* ── LOAD BILLS ── */
 async function loadBills(){
+  EL.billsList.innerHTML='<div class="loading">⏳ Bills load ho rahe hain...</div>';
   const {data,error}=await sb.from('bills').select('id,bill_no,bill_date,is_gst,cust_name,cust_guest,cust_phone,cust_address,cust_gstin,cust_state,cust_booked,subtotal,cgst,sgst,igst,cgst_pct,sgst_pct,igst_pct,extra_charges,advance,grand_total,balance_due,bank_details,created_at').order('created_at',{ascending:false});
-  if(error){document.getElementById('bills-list').innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
+  if(error){EL.billsList.innerHTML=`<div class="empty">Error: ${error.message}<br><small>Run SQL setup in Supabase first.</small></div>`;return;}
   allBills=data||[];billsLoaded=true;renderBills(allBills);
 }
-function f(n){return'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+const f = fmt;
 function renderBills(bills){
   if(!bills.length){document.getElementById('bills-list').innerHTML='<div class="empty">No bills yet.</div>';return;}
   document.getElementById('bills-list').innerHTML=`
@@ -1413,7 +1537,7 @@ async function viewBill(id){
   viewingBillId=id;
   document.getElementById('view-modal-title').textContent=`📄 Bill #${b.bill_no} — ${b.cust_name||''}`;
   const items=b.items||[];
-  const fv=n=>'₹'+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  
   document.getElementById('view-modal-body').innerHTML=`
     <div class="bd-top">
       <div class="bd-co">
@@ -1440,7 +1564,7 @@ async function viewBill(id){
       <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
       <tbody>${items.map(i=>`<tr>
         <td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td>
-        <td>${fv(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fv(i.amount)}</td>
+        <td>${fmt(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fmt(i.amount)}</td>
       </tr>`).join('')}</tbody>
     </table>
     <div class="bd-summary">
@@ -1454,14 +1578,14 @@ async function viewBill(id){
         <div class="bd-row"><span class="lbl">IFSC</span><span class="val">${bk.ifsc}</span></div>`;})()}
       </div>
       <div class="bd-tax">
-        <div class="bd-tax-row"><span>Subtotal</span><strong>${fv(b.subtotal)}</strong></div>
-        ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fv(b.cgst)}</span></div>`:''}
-        ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fv(b.sgst)}</span></div>`:''}
-        ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fv(b.igst)}</span></div>`:''}
-        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fv(b.extra_charges)}</span></div>`:''}
-        ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fv(b.advance)}</span></div>`:''}
-        <div class="bd-total"><span>GRAND TOTAL</span><span>${fv(b.grand_total)}</span></div>
-        <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fv(b.balance_due):'PAID ✅'}</span></div>
+        <div class="bd-tax-row"><span>Subtotal</span><strong>${fmt(b.subtotal)}</strong></div>
+        ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
+        ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
+        ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
+        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+        ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
+        <div class="bd-total"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
+        <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
       </div>
     </div>
     <div class="bd-words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>`;
@@ -1529,7 +1653,9 @@ function openEditFromView(){
   editBill(viewingBillId);
 }
 function addEditRow(i={}){
+  const hasEx=i.ex_km||i.ex_km_rate||i.ex_hr||i.ex_hr_rate;
   const tr=document.createElement('tr');
+  tr.dataset.rowId='e'+Date.now()+Math.random();
   tr.innerHTML=`
     <td><input type="date" class="er-date tl" value="${i.date||''}" oninput="calcEdit()"></td>
     <td><input type="text" class="er-veh tl" placeholder="Vehicle" list="vlist" value="${i.vehicle||''}"></td>
@@ -1537,32 +1663,80 @@ function addEditRow(i={}){
     <td><input type="number" class="er-rate" placeholder="0" value="${i.rate||''}" oninput="calcEdit()"></td>
     <td><input type="number" class="er-qty" value="${i.qty||1}" min="0" step="0.5" oninput="calcEdit()"></td>
     <td class="amt-c">₹0.00</td>
-    <td><button class="del-btn" onclick="this.closest('tr').remove();calcEdit()">✕</button></td>`;
+    <td style="white-space:nowrap;display:flex;gap:4px;padding:4px 3px;">
+      <button class="ex-toggle${hasEx?' active':''}" onclick="toggleExRowEdit(this)">⚡ Extra</button>
+      <button class="del-btn" onclick="this.closest('tr').nextSibling?.classList?.contains('ex-expand')&&this.closest('tr').nextSibling.remove();this.closest('tr').remove();calcEdit()">✕</button>
+    </td>`;
   document.getElementById('edit-tbody').appendChild(tr);
+  if(hasEx) insertExRowEdit(tr,i);
   calcEdit();
 }
+
+function toggleExRowEdit(btn){
+  const tr=btn.closest('tr');
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('ex-expand')){next.remove();btn.classList.remove('active');}
+  else{insertExRowEdit(tr,{});btn.classList.add('active');}
+  calcEdit();
+}
+
+function insertExRowEdit(mainTr,d){
+  const exTr=document.createElement('tr');
+  exTr.classList.add('ex-expand');
+  exTr.innerHTML=`<td colspan="7">
+    <div class="ex-fields">
+      <div class="ex-grp"><label>Extra KM</label>
+        <input type="number" class="er-exkm" placeholder="0" min="0" value="${d.ex_km||''}" oninput="calcEdit()">
+        <label style="margin-left:4px;">× ₹/km</label>
+        <input type="number" class="er-exkmr" placeholder="0" min="0" value="${d.ex_km_rate||''}" oninput="calcEdit()">
+      </div>
+      <div class="ex-grp"><label>Extra Hour</label>
+        <input type="number" class="er-exhr" placeholder="0" min="0" value="${d.ex_hr||''}" oninput="calcEdit()">
+        <label style="margin-left:4px;">× ₹/hr</label>
+        <input type="number" class="er-exhrr" placeholder="0" min="0" value="${d.ex_hr_rate||''}" oninput="calcEdit()">
+      </div>
+    </div></td>`;
+  mainTr.after(exTr);
+}
+
 function calcEdit(){
   let sub=0;
-  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
-    const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
-    const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
-    const a=r*q; sub+=a;
-    tr.querySelector('.amt-c').textContent='₹'+a.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.querySelectorAll('#edit-tbody tr:not(.ex-expand)').forEach(tr=>{
+    const r  =parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q  =parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km =parseFloat(exTr?.querySelector('.er-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.er-exkmr')?.value)||0;
+    const hr =parseFloat(exTr?.querySelector('.er-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.er-exhrr')?.value)||0;
+    const a  =(r*q)+(km*kmr)+(hr*hrr);
+    sub+=a;
+    tr.querySelector('.amt-c').textContent=fmt(a);
   });
   const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
   const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
   const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
   const ex=parseFloat(document.getElementById('edit-extra').value)||0;
   const gr=sub+cg+sg+ig+ex;
-  document.getElementById('edit-grand').value='₹'+gr.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('edit-grand').value=fmt(gr);
 }
 async function saveEditBill(){
   const id=document.getElementById('edit-id').value;
   const items=[];
-  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
-    const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
-    const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
-    if(r||q) items.push({date:tr.querySelector('.er-date')?.value,vehicle:tr.querySelector('.er-veh')?.value,desc:tr.querySelector('.er-rte')?.value,rate:r,qty:q,amount:r*q});
+  document.querySelectorAll('#edit-tbody tr:not(.ex-expand)').forEach(tr=>{
+    const date=tr.querySelector('.er-date')?.value||'';
+    const vehicle=tr.querySelector('.er-veh')?.value||'';
+    const desc=tr.querySelector('.er-rte')?.value||'';
+    const r  =parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q  =parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km =parseFloat(exTr?.querySelector('.er-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.er-exkmr')?.value)||0;
+    const hr =parseFloat(exTr?.querySelector('.er-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.er-exhrr')?.value)||0;
+    const a=(r*q)+(km*kmr)+(hr*hrr);
+    if(a>0||r>0||km>0||hr>0)
+      items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
   });
   const sub=items.reduce((s,i)=>s+i.amount,0);
   const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
@@ -1602,8 +1776,9 @@ async function saveEditBill(){
 
 /* ── CUSTOMERS ── */
 async function loadCusts(){
+  EL.custList.innerHTML='<div class="loading">⏳ Customers load ho rahe hain...</div>';
   const {data,error}=await sb.from('customers').select('*').order('name');
-  if(error){document.getElementById('cust-list').innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
+  if(error){EL.custList.innerHTML=`<div class="empty">Error: ${error.message}</div>`;return;}
   allCusts=data||[];custsLoaded=true;
   renderCustList();
 }
