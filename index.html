@@ -66,14 +66,18 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .trip-table input.tl{text-align:left;}
 .trip-table .amt-cell{text-align:right;font-weight:700;color:var(--bd);padding-right:6px;white-space:nowrap;}
 .del-btn{background:#fee2e2;border:1px solid #fca5a5;color:var(--rd);border-radius:5px;padding:4px 8px;cursor:pointer;font-size:12px;}
-/* ── EXTRA CHARGES ROW ── */
-.ex-type-sel{padding:4px 6px;border:1px solid #ddd;border-radius:5px;font-size:11px;background:#fff;cursor:pointer;color:var(--bd);font-weight:700;}
-.ex-type-sel:focus{outline:none;border-color:var(--bm);}
-.ex-fields{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;}
-.ex-fields input{width:62px;padding:5px 4px;border:1px solid #e0e0e0;border-radius:5px;font-size:12px;text-align:center;background:#fff;}
-.ex-fields .ex-lbl{font-size:10px;color:#888;white-space:nowrap;}
-tr.ex-row td{background:#FFF8E7!important;border-bottom:1px solid #f0e0a0;}
-tr.ex-row:nth-child(even) td{background:#FFF4D6!important;}
+/* ── EXTRA KM/HR COLUMNS ── */
+.ex-toggle{background:#fff8e1;border:1px solid #F4B942;color:#854d0e;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
+.ex-toggle.active{background:#F4B942;color:#333;}
+.ex-expand{background:#FFF8E7;border-top:none;}
+.ex-expand td{padding:6px 8px!important;border-bottom:1px dashed #f0e0a0!important;}
+.ex-expand .ex-fields{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.ex-expand .ex-grp{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #ddd;border-radius:7px;padding:4px 8px;}
+.ex-expand .ex-grp label{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;white-space:nowrap;}
+.ex-expand .ex-grp input{width:72px;padding:4px 6px;border:none;border-radius:5px;font-size:13px;text-align:center;font-weight:700;background:transparent;}
+.ex-expand .ex-grp input:focus{outline:none;background:#fff8e1;}
+.ex-expand .ex-total{font-size:12px;font-weight:800;color:var(--bd);margin-left:auto;}
+
 
 
 /* ── TOTALS ── */
@@ -220,6 +224,7 @@ tr.ex-row:nth-child(even) td{background:#FFF4D6!important;}
 
   /* Mobile header bar */
   body::before{content:'Kagdiyal Holidays';display:block;background:var(--bd);color:#fff;padding:14px 16px;font-size:16px;font-weight:800;position:sticky;top:0;z-index:99;}
+
 
   /* Bill top — single column */
   .bill-top{grid-template-columns:1fr;}
@@ -565,19 +570,15 @@ tr.ex-row:nth-child(even) td{background:#FFF4D6!important;}
             <th style="width:90px">Date</th>
             <th style="width:120px">Vehicle</th>
             <th>Route / Duty</th>
-            <th style="width:70px" class="no-print">Type</th>
-            <th style="width:90px">Rate / Details</th>
-            <th style="width:55px">Qty</th>
-            <th style="width:100px">Amount (₹)</th>
-            <th style="width:36px" class="no-print"></th>
+            <th style="width:80px">Rate (₹)</th>
+            <th style="width:50px">Qty</th>
+            <th style="width:90px">Amount (₹)</th>
+            <th style="width:70px" class="no-print"></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="add-row-btn no-print" style="flex:1;" onclick="addRow()">+ Add Row</button>
-        <button class="add-row-btn no-print" style="flex:1;border-color:#F4B942;color:#854d0e;" onclick="addExRow()">⚡ Extra KM / Hour</button>
-      </div>
+      <button class="add-row-btn no-print" onclick="addRow()">+ Add Row</button>
     </div>
   </div>
 
@@ -1011,87 +1012,86 @@ function setGST(v) {
 
 /* ── ROWS ── */
 function addRow(d={}) {
+  const hasEx = d.ex_km||d.ex_km_rate||d.ex_hr||d.ex_hr_rate;
   const tr = document.createElement('tr');
+  tr.dataset.rowId = 'r' + Date.now() + Math.floor(Math.random()*10000);
   tr.innerHTML = `
     <td data-label="Date"><input type="date" class="r-date tl" value="${d.date||''}" oninput="calc()"></td>
     <td data-label="Vehicle"><input type="text" class="r-veh tl" placeholder="Vehicle / No." list="vlist" autocomplete="off" value="${d.vehicle||''}"></td>
     <td data-label="Route"><input type="text" class="r-rte tl" placeholder="Route / Duty" list="rlist" autocomplete="off" value="${d.desc||''}"></td>
-    <td class="no-print" data-label="Type"><select class="ex-type-sel" onchange="calc()" style="display:none;"></select></td>
-    <td data-label="Rate"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" value="${d.rate||''}" oninput="dCalc()"></td>
+    <td data-label="Rate (₹)"><input type="number" class="r-rate" placeholder="0" inputmode="numeric" value="${d.rate||''}" oninput="dCalc()"></td>
     <td data-label="Qty"><input type="number" class="r-qty" value="${d.qty||1}" min="0" step="0.5" inputmode="decimal" oninput="dCalc()"></td>
     <td class="amt-cell" data-label="Amount">₹0.00</td>
-    <td class="no-print"><button class="del-btn" onclick="this.closest('tr').remove();calc()">✕</button></td>`;
+    <td class="no-print" style="white-space:nowrap;display:flex;gap:4px;padding:5px 4px;">
+      <button class="ex-toggle${hasEx?' active':''}" onclick="toggleExRow(this)" title="Extra KM / Hour charges">⚡ Extra</button>
+      <button class="del-btn" onclick="this.closest('tr').nextSibling?.classList?.contains('ex-expand')&&this.closest('tr').nextSibling.remove();this.closest('tr').remove();calc()">✕</button>
+    </td>`;
   EL.tbody.appendChild(tr);
+  // Expand row for ex data if present
+  if(hasEx) insertExRow(tr, d);
 }
 
-/* ── EXTRA KM/HOUR ROW ── */
-function addExRow(d={}) {
-  const tr = document.createElement('tr');
-  tr.classList.add('ex-row');
-  const typ = d.ex_type||'km';
-  tr.innerHTML = `
-    <td data-label="Date"><input type="date" class="r-date tl" value="${d.date||''}" oninput="calc()"></td>
-    <td data-label="Vehicle"><input type="text" class="r-veh tl" placeholder="Vehicle / No." list="vlist" autocomplete="off" value="${d.vehicle||''}"></td>
-    <td data-label="Route"><input type="text" class="r-rte tl" placeholder="Description" value="${d.desc||'Extra Charges'}" autocomplete="off"></td>
-    <td class="no-print" data-label="Type">
-      <select class="ex-type-sel r-extype" onchange="toggleExFields(this);calc()">
-        <option value="km" ${typ==='km'?'selected':''}>⚡ KM</option>
-        <option value="hr" ${typ==='hr'?'selected':''}>⏱ Hour</option>
-        <option value="both" ${typ==='both'?'selected':''}>KM+Hr</option>
-      </select>
-    </td>
-    <td data-label="Rate / Details" colspan="2">
+function toggleExRow(btn){
+  const tr = btn.closest('tr');
+  const next = tr.nextElementSibling;
+  if(next && next.classList.contains('ex-expand')){
+    next.remove();
+    btn.classList.remove('active');
+    btn.textContent='⚡ Extra';
+  } else {
+    insertExRow(tr, {});
+    btn.classList.add('active');
+    btn.textContent='⚡ Extra';
+  }
+  calc();
+}
+
+function insertExRow(mainTr, d){
+  const exTr = document.createElement('tr');
+  exTr.classList.add('ex-expand','no-print-collapse');
+  exTr.innerHTML = `
+    <td colspan="7" class="no-print-collapse">
       <div class="ex-fields">
-        <div class="ex-km-wrap" style="display:${typ==='hr'?'none':'flex'};gap:3px;align-items:center;">
-          <input type="number" class="r-exkm" placeholder="KM" min="0" value="${d.ex_km||''}" oninput="calc()" style="width:58px;">
-          <span class="ex-lbl">km ×</span>
-          <input type="number" class="r-exkmr" placeholder="₹/km" min="0" value="${d.ex_km_rate||''}" oninput="calc()" style="width:58px;">
+        <div class="ex-grp">
+          <label>Extra KM</label>
+          <input type="number" class="r-exkm" placeholder="0" min="0" value="${d.ex_km||''}" oninput="calc()">
+          <label style="margin-left:4px;">× ₹/km</label>
+          <input type="number" class="r-exkmr" placeholder="0" min="0" value="${d.ex_km_rate||''}" oninput="calc()">
         </div>
-        <span class="ex-lbl ex-plus" style="display:${typ==='both'?'inline':'none'};">+</span>
-        <div class="ex-hr-wrap" style="display:${typ==='km'?'none':'flex'};gap:3px;align-items:center;">
-          <input type="number" class="r-exhr" placeholder="Hrs" min="0" value="${d.ex_hr||''}" oninput="calc()" style="width:52px;">
-          <span class="ex-lbl">hr ×</span>
-          <input type="number" class="r-exhrr" placeholder="₹/hr" min="0" value="${d.ex_hr_rate||''}" oninput="calc()" style="width:58px;">
+        <div class="ex-grp">
+          <label>Extra Hour</label>
+          <input type="number" class="r-exhr" placeholder="0" min="0" value="${d.ex_hr||''}" oninput="calc()">
+          <label style="margin-left:4px;">× ₹/hr</label>
+          <input type="number" class="r-exhrr" placeholder="0" min="0" value="${d.ex_hr_rate||''}" oninput="calc()">
         </div>
+        <span class="ex-total" id="extot-${mainTr.dataset.rowId}"></span>
       </div>
-    </td>
-    <td class="amt-cell" data-label="Amount">₹0.00</td>
-    <td class="no-print"><button class="del-btn" onclick="this.closest('tr').remove();calc()">✕</button></td>`;
-  EL.tbody.appendChild(tr);
+    </td>`;
+  mainTr.after(exTr);
 }
 
-function toggleExFields(sel){
-  const tr=sel.closest('tr');
-  const typ=sel.value;
-  const kmw=tr.querySelector('.ex-km-wrap');
-  const hrw=tr.querySelector('.ex-hr-wrap');
-  const plus=tr.querySelector('.ex-plus');
-  kmw.style.display=typ==='hr'?'none':'flex';
-  hrw.style.display=typ==='km'?'none':'flex';
-  if(plus) plus.style.display=typ==='both'?'inline':'none';
-}
 
 /* ── CALC ── */
 function calc() {
   let sub = 0;
-  EL.tbody.querySelectorAll('tr').forEach(tr => {
-    let a = 0;
-    if(tr.classList.contains('ex-row')){
-      const typ=(tr.querySelector('.r-extype')?.value)||'km';
-      const km=parseFloat(tr.querySelector('.r-exkm')?.value)||0;
-      const kmr=parseFloat(tr.querySelector('.r-exkmr')?.value)||0;
-      const hr=parseFloat(tr.querySelector('.r-exhr')?.value)||0;
-      const hrr=parseFloat(tr.querySelector('.r-exhrr')?.value)||0;
-      if(typ==='km') a=km*kmr;
-      else if(typ==='hr') a=hr*hrr;
-      else a=km*kmr+hr*hrr;
-    } else {
-      const r = parseFloat(tr.querySelector('.r-rate')?.value)||0;
-      const q = parseFloat(tr.querySelector('.r-qty')?.value)||0;
-      a = r*q;
-    }
+  EL.tbody.querySelectorAll('tr:not(.ex-expand)').forEach(tr => {
+    const r   = parseFloat(tr.querySelector('.r-rate')?.value)||0;
+    const q   = parseFloat(tr.querySelector('.r-qty')?.value)||0;
+    // Read ex fields from sibling ex-expand row if present
+    const exTr = tr.nextElementSibling?.classList.contains('ex-expand') ? tr.nextElementSibling : null;
+    const km  = parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+    const kmr = parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+    const hr  = parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+    const hrr = parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+    const exAmt = (km*kmr)+(hr*hrr);
+    const a   = (r*q) + exAmt;
     sub += a;
     tr.querySelector('.amt-cell').textContent = fmt(a);
+    // Update ex subtotal label
+    if(exTr && tr.dataset.rowId){
+      const lbl = exTr.querySelector('#extot-'+tr.dataset.rowId);
+      if(lbl) lbl.textContent = exAmt>0 ? '= '+fmt(exAmt) : '';
+    }
   });
   const cg = isGST ? sub*(parseFloat(EL.cgstP.value)||0)/100 : 0;
   const sg = isGST ? sub*(parseFloat(EL.sgstP.value)||0)/100 : 0;
@@ -1199,7 +1199,12 @@ function buildBillHTML(b){
   </div>
   <table>
     <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
-    <tbody>${items.map(i=>i.is_extra?`<tr style="background:#FFF8E7;"><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'Extra'}</td><td class="tl" style="font-size:7pt;color:#555;">${i.ex_type==='km'?`${i.ex_km} km × ₹${i.ex_km_rate}`:i.ex_type==='hr'?`${i.ex_hr} hr × ₹${i.ex_hr_rate}`:`${i.ex_km}km×₹${i.ex_km_rate} + ${i.ex_hr}hr×₹${i.ex_hr_rate}`}</td><td>—</td><td style="font-weight:700;">${fmt(i.amount)}</td></tr>`:`<tr><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}</td><td>${fmt(i.rate)}</td><td>${i.qty}</td><td style="font-weight:700;">${fmt(i.amount)}</td></tr>`).join('')}</tbody>
+    <tbody>${items.map(i=>{
+      const baseAmt=i.rate*(i.qty||1);
+      const exAmt=((i.ex_km||0)*(i.ex_km_rate||0))+((i.ex_hr||0)*(i.ex_hr_rate||0));
+      const exLine=(i.ex_km||i.ex_hr)?`<div style="font-size:6.5pt;color:#854d0e;margin-top:2pt;">${i.ex_km?i.ex_km+'km×₹'+i.ex_km_rate:''}${(i.ex_km&&i.ex_hr)?' + ':''}${i.ex_hr?i.ex_hr+'hr×₹'+i.ex_hr_rate:''} = ₹${exAmt}</div>`:'';
+      return`<tr${(i.ex_km||i.ex_hr)?' style="background:#FFF8E7;"':''}><td>${i.date||'—'}</td><td>${i.vehicle||'—'}</td><td class="tl">${i.desc||'—'}${exLine}</td><td>${i.rate?fmt(i.rate):'—'}</td><td>${i.qty||'—'}</td><td style="font-weight:700;">${fmt(i.amount)}</td></tr>`;
+    }).join('')}</tbody>
   </table>
   <div class="smry">
     <div class="bank"><h4>🏦 Bank Details</h4>
@@ -1259,26 +1264,20 @@ async function sendPDFtoWA(){
   try{
     // Build a temp bill object from current form
     const items=[];
-    document.querySelectorAll('#tbody tr').forEach(tr=>{
-      const date=tr.querySelector('.r-date')?.value;
-      const vehicle=tr.querySelector('.r-veh')?.value;
-      const desc=tr.querySelector('.r-rte')?.value;
-      if(tr.classList.contains('ex-row')){
-        const typ=(tr.querySelector('.r-extype')?.value)||'km';
-        const km=parseFloat(tr.querySelector('.r-exkm')?.value)||0;
-        const kmr=parseFloat(tr.querySelector('.r-exkmr')?.value)||0;
-        const hr=parseFloat(tr.querySelector('.r-exhr')?.value)||0;
-        const hrr=parseFloat(tr.querySelector('.r-exhrr')?.value)||0;
-        let a=0;
-        if(typ==='km') a=km*kmr;
-        else if(typ==='hr') a=hr*hrr;
-        else a=km*kmr+hr*hrr;
-        if(a>0||km>0||hr>0) items.push({date,vehicle,desc,rate:0,qty:1,amount:a,ex_type:typ,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,is_extra:true});
-      } else {
-        const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
-        const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
-        if(r||q) items.push({date,vehicle,desc,rate:r,qty:q,amount:r*q});
-      }
+    document.querySelectorAll('#tbody tr:not(.ex-expand)').forEach(tr=>{
+      const date=tr.querySelector('.r-date')?.value||'';
+      const vehicle=tr.querySelector('.r-veh')?.value||'';
+      const desc=tr.querySelector('.r-rte')?.value||'';
+      const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
+      const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
+      const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+      const km=parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+      const kmr=parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+      const hr=parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+      const hrr=parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+      const a=(r*q)+(km*kmr)+(hr*hrr);
+      if(a>0||r>0||km>0||hr>0)
+        items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
     });
     const sub=items.reduce((s,i)=>s+i.amount,0);
     const cg=isGST?sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100:0;
@@ -1384,26 +1383,20 @@ async function saveBill(){
   }
 
   const items=[];
-  document.querySelectorAll('#tbody tr').forEach(tr=>{
-    const date=tr.querySelector('.r-date')?.value;
-    const vehicle=tr.querySelector('.r-veh')?.value;
-    const desc=tr.querySelector('.r-rte')?.value;
-    if(tr.classList.contains('ex-row')){
-      const typ=(tr.querySelector('.r-extype')?.value)||'km';
-      const km=parseFloat(tr.querySelector('.r-exkm')?.value)||0;
-      const kmr=parseFloat(tr.querySelector('.r-exkmr')?.value)||0;
-      const hr=parseFloat(tr.querySelector('.r-exhr')?.value)||0;
-      const hrr=parseFloat(tr.querySelector('.r-exhrr')?.value)||0;
-      let a=0;
-      if(typ==='km') a=km*kmr;
-      else if(typ==='hr') a=hr*hrr;
-      else a=km*kmr+hr*hrr;
-      if(a>0||km>0||hr>0) items.push({date,vehicle,desc,rate:0,qty:1,amount:a,ex_type:typ,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,is_extra:true});
-    } else {
-      const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
-      const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
-      if(r||q) items.push({date,vehicle,desc,rate:r,qty:q,amount:r*q});
-    }
+  document.querySelectorAll('#tbody tr:not(.ex-expand)').forEach(tr=>{
+    const date=tr.querySelector('.r-date')?.value||'';
+    const vehicle=tr.querySelector('.r-veh')?.value||'';
+    const desc=tr.querySelector('.r-rte')?.value||'';
+    const r=parseFloat(tr.querySelector('.r-rate')?.value)||0;
+    const q=parseFloat(tr.querySelector('.r-qty')?.value)||0;
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km=parseFloat(exTr?.querySelector('.r-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.r-exkmr')?.value)||0;
+    const hr=parseFloat(exTr?.querySelector('.r-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.r-exhrr')?.value)||0;
+    const a=(r*q)+(km*kmr)+(hr*hrr);
+    if(a>0||r>0||km>0||hr>0)
+      items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
   });
   const sub=items.reduce((s,i)=>s+i.amount,0);
   const cg=isGST?sub*(parseFloat(document.getElementById('cgst-p').value)||0)/100:0;
@@ -1664,77 +1657,63 @@ function openEditFromView(){
   editBill(viewingBillId);
 }
 function addEditRow(i={}){
+  const hasEx=i.ex_km||i.ex_km_rate||i.ex_hr||i.ex_hr_rate;
   const tr=document.createElement('tr');
-  if(i.is_extra){
-    tr.classList.add('ex-row');
-    const typ=i.ex_type||'km';
-    tr.innerHTML=`
-      <td><input type="date" class="er-date tl" value="${i.date||''}" oninput="calcEdit()"></td>
-      <td><input type="text" class="er-veh tl" placeholder="Vehicle" list="vlist" value="${i.vehicle||''}"></td>
-      <td><input type="text" class="er-rte tl" placeholder="Description" value="${i.desc||'Extra Charges'}"></td>
-      <td><select class="ex-type-sel r-extype" onchange="toggleExFieldsEdit(this);calcEdit()">
-        <option value="km" ${typ==='km'?'selected':''}>⚡ KM</option>
-        <option value="hr" ${typ==='hr'?'selected':''}>⏱ Hour</option>
-        <option value="both" ${typ==='both'?'selected':''}>KM+Hr</option>
-      </select></td>
-      <td colspan="2"><div class="ex-fields">
-        <div class="ex-km-wrap" style="display:${typ==='hr'?'none':'flex'};gap:3px;align-items:center;">
-          <input type="number" class="r-exkm" placeholder="KM" min="0" value="${i.ex_km||''}" oninput="calcEdit()" style="width:58px;">
-          <span class="ex-lbl">km ×</span>
-          <input type="number" class="r-exkmr" placeholder="₹/km" min="0" value="${i.ex_km_rate||''}" oninput="calcEdit()" style="width:58px;">
-        </div>
-        <span class="ex-lbl ex-plus" style="display:${typ==='both'?'inline':'none'};">+</span>
-        <div class="ex-hr-wrap" style="display:${typ==='km'?'none':'flex'};gap:3px;align-items:center;">
-          <input type="number" class="r-exhr" placeholder="Hrs" min="0" value="${i.ex_hr||''}" oninput="calcEdit()" style="width:52px;">
-          <span class="ex-lbl">hr ×</span>
-          <input type="number" class="r-exhrr" placeholder="₹/hr" min="0" value="${i.ex_hr_rate||''}" oninput="calcEdit()" style="width:58px;">
-        </div>
-      </div></td>
-      <td class="amt-c">₹0.00</td>
-      <td><button class="del-btn" onclick="this.closest('tr').remove();calcEdit()">✕</button></td>`;
-  } else {
-    tr.innerHTML=`
-      <td><input type="date" class="er-date tl" value="${i.date||''}" oninput="calcEdit()"></td>
-      <td><input type="text" class="er-veh tl" placeholder="Vehicle" list="vlist" value="${i.vehicle||''}"></td>
-      <td><input type="text" class="er-rte tl" placeholder="Route" list="rlist" value="${i.desc||''}"></td>
-      <td></td>
-      <td><input type="number" class="er-rate" placeholder="0" value="${i.rate||''}" oninput="calcEdit()"></td>
-      <td><input type="number" class="er-qty" value="${i.qty||1}" min="0" step="0.5" oninput="calcEdit()"></td>
-      <td class="amt-c">₹0.00</td>
-      <td><button class="del-btn" onclick="this.closest('tr').remove();calcEdit()">✕</button></td>`;
-  }
+  tr.dataset.rowId='e'+Date.now()+Math.random();
+  tr.innerHTML=`
+    <td><input type="date" class="er-date tl" value="${i.date||''}" oninput="calcEdit()"></td>
+    <td><input type="text" class="er-veh tl" placeholder="Vehicle" list="vlist" value="${i.vehicle||''}"></td>
+    <td><input type="text" class="er-rte tl" placeholder="Route" list="rlist" value="${i.desc||''}"></td>
+    <td><input type="number" class="er-rate" placeholder="0" value="${i.rate||''}" oninput="calcEdit()"></td>
+    <td><input type="number" class="er-qty" value="${i.qty||1}" min="0" step="0.5" oninput="calcEdit()"></td>
+    <td class="amt-c">₹0.00</td>
+    <td style="white-space:nowrap;display:flex;gap:4px;padding:4px 3px;">
+      <button class="ex-toggle${hasEx?' active':''}" onclick="toggleExRowEdit(this)">⚡ Extra</button>
+      <button class="del-btn" onclick="this.closest('tr').nextSibling?.classList?.contains('ex-expand')&&this.closest('tr').nextSibling.remove();this.closest('tr').remove();calcEdit()">✕</button>
+    </td>`;
   document.getElementById('edit-tbody').appendChild(tr);
+  if(hasEx) insertExRowEdit(tr,i);
   calcEdit();
 }
 
-function toggleExFieldsEdit(sel){
-  const tr=sel.closest('tr');
-  const typ=sel.value;
-  const kmw=tr.querySelector('.ex-km-wrap');
-  const hrw=tr.querySelector('.ex-hr-wrap');
-  const plus=tr.querySelector('.ex-plus');
-  kmw.style.display=typ==='hr'?'none':'flex';
-  hrw.style.display=typ==='km'?'none':'flex';
-  if(plus) plus.style.display=typ==='both'?'inline':'none';
+function toggleExRowEdit(btn){
+  const tr=btn.closest('tr');
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('ex-expand')){next.remove();btn.classList.remove('active');}
+  else{insertExRowEdit(tr,{});btn.classList.add('active');}
+  calcEdit();
 }
+
+function insertExRowEdit(mainTr,d){
+  const exTr=document.createElement('tr');
+  exTr.classList.add('ex-expand');
+  exTr.innerHTML=`<td colspan="7">
+    <div class="ex-fields">
+      <div class="ex-grp"><label>Extra KM</label>
+        <input type="number" class="er-exkm" placeholder="0" min="0" value="${d.ex_km||''}" oninput="calcEdit()">
+        <label style="margin-left:4px;">× ₹/km</label>
+        <input type="number" class="er-exkmr" placeholder="0" min="0" value="${d.ex_km_rate||''}" oninput="calcEdit()">
+      </div>
+      <div class="ex-grp"><label>Extra Hour</label>
+        <input type="number" class="er-exhr" placeholder="0" min="0" value="${d.ex_hr||''}" oninput="calcEdit()">
+        <label style="margin-left:4px;">× ₹/hr</label>
+        <input type="number" class="er-exhrr" placeholder="0" min="0" value="${d.ex_hr_rate||''}" oninput="calcEdit()">
+      </div>
+    </div></td>`;
+  mainTr.after(exTr);
+}
+
 function calcEdit(){
   let sub=0;
-  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
-    let a=0;
-    if(tr.classList.contains('ex-row')){
-      const typ=(tr.querySelector('.r-extype')?.value)||'km';
-      const km=parseFloat(tr.querySelector('.r-exkm')?.value)||0;
-      const kmr=parseFloat(tr.querySelector('.r-exkmr')?.value)||0;
-      const hr=parseFloat(tr.querySelector('.r-exhr')?.value)||0;
-      const hrr=parseFloat(tr.querySelector('.r-exhrr')?.value)||0;
-      if(typ==='km') a=km*kmr;
-      else if(typ==='hr') a=hr*hrr;
-      else a=km*kmr+hr*hrr;
-    } else {
-      const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
-      const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
-      a=r*q;
-    }
+  document.querySelectorAll('#edit-tbody tr:not(.ex-expand)').forEach(tr=>{
+    const r  =parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q  =parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km =parseFloat(exTr?.querySelector('.er-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.er-exkmr')?.value)||0;
+    const hr =parseFloat(exTr?.querySelector('.er-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.er-exhrr')?.value)||0;
+    const a  =(r*q)+(km*kmr)+(hr*hrr);
     sub+=a;
     tr.querySelector('.amt-c').textContent=fmt(a);
   });
@@ -1748,26 +1727,20 @@ function calcEdit(){
 async function saveEditBill(){
   const id=document.getElementById('edit-id').value;
   const items=[];
-  document.querySelectorAll('#edit-tbody tr').forEach(tr=>{
-    const date=tr.querySelector('.er-date')?.value;
-    const vehicle=tr.querySelector('.er-veh')?.value;
-    const desc=tr.querySelector('.er-rte')?.value;
-    if(tr.classList.contains('ex-row')){
-      const typ=(tr.querySelector('.r-extype')?.value)||'km';
-      const km=parseFloat(tr.querySelector('.r-exkm')?.value)||0;
-      const kmr=parseFloat(tr.querySelector('.r-exkmr')?.value)||0;
-      const hr=parseFloat(tr.querySelector('.r-exhr')?.value)||0;
-      const hrr=parseFloat(tr.querySelector('.r-exhrr')?.value)||0;
-      let a=0;
-      if(typ==='km') a=km*kmr;
-      else if(typ==='hr') a=hr*hrr;
-      else a=km*kmr+hr*hrr;
-      if(a>0||km>0||hr>0) items.push({date,vehicle,desc,rate:0,qty:1,amount:a,ex_type:typ,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,is_extra:true});
-    } else {
-      const r=parseFloat(tr.querySelector('.er-rate')?.value)||0;
-      const q=parseFloat(tr.querySelector('.er-qty')?.value)||0;
-      if(r||q) items.push({date,vehicle,desc,rate:r,qty:q,amount:r*q});
-    }
+  document.querySelectorAll('#edit-tbody tr:not(.ex-expand)').forEach(tr=>{
+    const date=tr.querySelector('.er-date')?.value||'';
+    const vehicle=tr.querySelector('.er-veh')?.value||'';
+    const desc=tr.querySelector('.er-rte')?.value||'';
+    const r  =parseFloat(tr.querySelector('.er-rate')?.value)||0;
+    const q  =parseFloat(tr.querySelector('.er-qty')?.value)||0;
+    const exTr=tr.nextElementSibling?.classList.contains('ex-expand')?tr.nextElementSibling:null;
+    const km =parseFloat(exTr?.querySelector('.er-exkm')?.value)||0;
+    const kmr=parseFloat(exTr?.querySelector('.er-exkmr')?.value)||0;
+    const hr =parseFloat(exTr?.querySelector('.er-exhr')?.value)||0;
+    const hrr=parseFloat(exTr?.querySelector('.er-exhrr')?.value)||0;
+    const a=(r*q)+(km*kmr)+(hr*hrr);
+    if(a>0||r>0||km>0||hr>0)
+      items.push({date,vehicle,desc,rate:r,qty:q,ex_km:km,ex_km_rate:kmr,ex_hr:hr,ex_hr_rate:hrr,amount:a});
   });
   const sub=items.reduce((s,i)=>s+i.amount,0);
   const cg=sub*(parseFloat(document.getElementById('edit-cgst-p').value)||0)/100;
