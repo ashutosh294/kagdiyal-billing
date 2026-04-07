@@ -70,13 +70,15 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .ex-toggle{background:#fff8e1;border:1px solid #F4B942;color:#854d0e;border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;}
 .ex-toggle.active{background:#F4B942;color:#333;}
 .ex-expand{background:#FFF8E7;border-top:none;}
-.ex-expand td{padding:2px 0 2px 4px!important;border-bottom:1px dashed #f0e0a0!important;}
-.ex-expand .ex-fields{display:grid;grid-template-columns:88px 60px 14px 60px 88px 60px 14px 60px auto;align-items:center;gap:3px;padding:1px 0;}
-.ex-expand .ex-lbl{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;white-space:nowrap;text-align:right;padding-right:3px;}
-.ex-expand .ex-sep{font-size:10px;color:#aaa;text-align:center;}
-.ex-expand .ex-grp-inp{width:100%;padding:3px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;text-align:center;font-weight:700;background:#fff;}
+.ex-expand td{padding:2px 0!important;border-bottom:1px dashed #f0e0a0!important;}
+.ex-expand .ex-fields{display:flex;align-items:center;gap:4px;justify-content:flex-end;padding:2px 4px 2px 0;}
+.ex-expand .ex-lbl{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;white-space:nowrap;}
+.ex-expand .ex-sep{font-size:10px;color:#aaa;padding:0 1px;}
+.ex-expand .ex-unit{font-size:10px;color:#666;font-weight:700;white-space:nowrap;background:#f0f0f0;border-radius:3px;padding:2px 4px;}
+.ex-expand .ex-grp-inp{width:52px;padding:3px 4px;border:1px solid #ddd;border-radius:4px;font-size:12px;text-align:center;font-weight:700;background:#fff;}
 .ex-expand .ex-grp-inp:focus{outline:none;background:#fff8e1;border-color:var(--bm);}
-.ex-expand .ex-total{font-size:11px;font-weight:800;color:var(--bd);white-space:nowrap;text-align:right;}
+.ex-expand .ex-divider{width:1px;height:16px;background:#ddd;margin:0 4px;}
+.ex-expand .ex-total{font-size:11px;font-weight:800;color:var(--bd);white-space:nowrap;margin-left:6px;}
 
 
 
@@ -1055,11 +1057,14 @@ function insertExRow(mainTr, d){
         <span class="ex-lbl">Ex KM</span>
         <input type="number" class="r-exkm ex-grp-inp" placeholder="0" min="0" value="${d.ex_km||''}" oninput="calc()">
         <span class="ex-sep">×</span>
-        <input type="number" class="r-exkmr ex-grp-inp" placeholder="₹/km" min="0" value="${d.ex_km_rate||''}" oninput="calc()">
+        <input type="number" class="r-exkmr ex-grp-inp" placeholder="0" min="0" value="${d.ex_km_rate||''}" oninput="calc()">
+        <span class="ex-unit">₹/km</span>
+        <span class="ex-divider"></span>
         <span class="ex-lbl">Ex Hour</span>
         <input type="number" class="r-exhr ex-grp-inp" placeholder="0" min="0" value="${d.ex_hr||''}" oninput="calc()">
         <span class="ex-sep">×</span>
-        <input type="number" class="r-exhrr ex-grp-inp" placeholder="₹/hr" min="0" value="${d.ex_hr_rate||''}" oninput="calc()">
+        <input type="number" class="r-exhrr ex-grp-inp" placeholder="0" min="0" value="${d.ex_hr_rate||''}" oninput="calc()">
+        <span class="ex-unit">₹/hr</span>
         <span class="ex-total" id="extot-${mainTr.dataset.rowId}"></span>
       </div>
     </td>`;
