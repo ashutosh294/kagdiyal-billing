@@ -4,8 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Kagdiyal Holidays — Billing</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KH Billing">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B3A6B'/%3E%3Ctext x='32' y='28' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='18' fill='%23F4B942'%3EKH%3C/text%3E%3Cpath d='M10 42 L28 36 L32 28 L36 36 L54 42 L36 40 L34 46 L30 46 L28 40 Z' fill='%23ffffff' opacity='0.95'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B3A6B'/%3E%3Ctext x='32' y='28' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='18' fill='%23F4B942'%3EKH%3C/text%3E%3Cpath d='M10 42 L28 36 L32 28 L36 36 L54 42 L36 40 L34 46 L30 46 L28 40 Z' fill='%23ffffff' opacity='0.95'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-180.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -504,6 +510,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
         <p>Billing Management System</p>
       </div>
       <button onclick="doLogout()" title="Logout" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#f87171;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;">🔓 Logout</button>
+      <button id="pwa-install-btn" onclick="installPWA()" title="Install App" style="display:none;background:var(--or);border:none;color:#333;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;">📲 Install App</button>
     </div>
     <div class="nav-tabs">
       <div class="nav-tab active" onclick="showPage('new-bill',this)">New Bill</div>
@@ -1966,6 +1973,46 @@ async function exportExcel(type='all'){
 
   XLSX.writeFile(wb,fileName);
   toast('Excel downloaded! ✅','success');
+}
+</script>
+
+<script>
+/* ── PWA Service Worker Registration ── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW failed:', err));
+  });
+}
+
+/* ── PWA Install Prompt ── */
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Install button dikhao agar available ho
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'inline-flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'none';
+  toast('App install ho gaya! 🎉', 'success');
+});
+
+function installPWA() {
+  if (!deferredPrompt) {
+    toast('App already installed hai ya browser support nahi karta', '');
+    return;
+  }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(choice => {
+    if (choice.outcome === 'accepted') toast('Installing... 🚀', 'success');
+    deferredPrompt = null;
+  });
 }
 </script>
 </body>
