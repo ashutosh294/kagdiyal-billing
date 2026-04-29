@@ -557,6 +557,40 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   .hist-table tbody td.no-print .btn-sm{flex-basis:calc(50% - 6px);}
 }
 
+/* Desktop/laptop table action fit: keep right-side buttons visible */
+@media(min-width:641px){
+  #bills-list,
+  #dues-list,
+  #dash-recent,
+  #cust-list{
+    overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .hist-table{
+    table-layout:auto;
+    min-width:100%;
+  }
+  .hist-table th.no-print,
+  .hist-table td.no-print{
+    min-width:300px!important;
+    width:300px;
+    white-space:normal!important;
+  }
+  .hist-table td.no-print{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px;
+  }
+  .hist-table td.no-print .btn,
+  .hist-table td.no-print .btn-sm{
+    margin:0!important;
+    min-height:34px;
+    padding:7px 10px;
+    justify-content:center;
+  }
+}
+
 /* ══════════════════════════════════════════
    PRINT — Single A4 page (Maximum Data Fit)
 ══════════════════════════════════════════ */
