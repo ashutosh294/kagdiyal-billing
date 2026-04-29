@@ -1305,7 +1305,7 @@ function showPage(p, el) {
 }
 
 /* ── BANK DETAILS — Last used se pre-fill ── */
-const DEFAULT_BANK = {bank:'YES BANK',name:'KAGDIYAL HOLIDAYS',acno:'004463300002943',branch:'Laxmi Nagar, Delhi',ifsc:'YESB0000044'};
+const DEFAULT_BANK = {bank:'YES BANK',name:'VIJAY RAM SHARMA',acno:'8287189598',branch:'EAST PUNJABI BAGH',ifsc:'YESB0000044'};
 function loadSavedBank(){
   let saved = DEFAULT_BANK;
   try { const s=sessionStorage.getItem('kh_last_bank'); if(s) saved={...DEFAULT_BANK,...JSON.parse(s)}; } catch(e){}
@@ -1945,7 +1945,7 @@ async function viewBill(id){
     <div class="bd-summary">
       <div class="bd-bank">
         <h4>🏦 Bank Details</h4>
-        ${(()=>{const bk=b.bank_details||{bank:'YES BANK',name:'KAGDIYAL HOLIDAYS',acno:'004463300002943',branch:'Laxmi Nagar, Delhi',ifsc:'YESB0000044'};return`
+        ${(()=>{const bk=b.bank_details||{bank:'YES BANK',name:'VIJAY RAM SHARMA',acno:'8287189598',branch:'EAST PUNJABI BAGH',ifsc:'YESB0000044'};return`
         <div class="bd-row"><span class="lbl">Bank</span><span class="val">${bk.bank}</span></div>
         <div class="bd-row"><span class="lbl">A/C</span><span class="val">${bk.acno}</span></div>
         <div class="bd-row"><span class="lbl">A/C Name</span><span class="val">${bk.name}</span></div>
