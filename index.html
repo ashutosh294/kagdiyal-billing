@@ -4,14 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Kagdiyal Holidays — Billing</title>
-<link rel="manifest" href="manifest.json">
+<!-- PWA manifest is added only for http/https so file:// testing stays clean. -->
+<script>
+(() => {
+  const canUsePWA = location.protocol === 'http:' || location.protocol === 'https:';
+  if (!canUsePWA) return;
+  const manifest = document.createElement('link');
+  manifest.rel = 'manifest';
+  manifest.href = 'manifest.json';
+  document.head.appendChild(manifest);
+  const appleIcon = document.createElement('link');
+  appleIcon.rel = 'apple-touch-icon';
+  appleIcon.href = 'icon-180.png';
+  document.head.appendChild(appleIcon);
+})();
+</script>
 <meta name="theme-color" content="#1B3A6B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KH Billing">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231B3A6B'/%3E%3Ctext x='32' y='28' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='18' fill='%23F4B942'%3EKH%3C/text%3E%3Cpath d='M10 42 L28 36 L32 28 L36 36 L54 42 L36 40 L34 46 L30 46 L28 40 Z' fill='%23ffffff' opacity='0.95'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="icon-180.png">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -23,9 +37,12 @@
   --rd: #C00000; --or: #F4B942;
   --text: #1a1a2e; --sub: #555;
   --radius: 10px; --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --space-xs:4px; --space-sm:8px; --space-md:16px; --space-lg:24px;
+  --fs-sm:13px; --fs-md:14px; --fs-lg:18px;
+  --border-light:#e8edf3; --hover-bg:#f5f9ff;
 }
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif;}
-body{background:#eef2f7;min-height:100vh;color:var(--text);}
+body{background:#eef2f7;min-height:100vh;color:var(--text);font-size:var(--fs-md);line-height:1.5;}
 
 /* ── NAV ── */
 nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);}
@@ -44,7 +61,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 /* ── CARDS ── */
 .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
 .card-hd{background:var(--bd);color:#fff;padding:12px 16px;font-size:13px;font-weight:700;}
-.card-bd{padding:16px;}
+.card-bd{padding:var(--space-md);}
 
 /* ── FORM ELEMENTS ── */
 .fg{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
@@ -66,8 +83,9 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 /* ── TRIP TABLE ── */
 .trip-table{width:100%;border-collapse:collapse;font-size:13px;}
 .trip-table th{background:var(--bm);color:#fff;padding:9px 6px;text-align:center;font-size:11px;}
-.trip-table td{padding:5px 4px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+.trip-table td{padding:10px 8px;border-bottom:1px solid var(--border-light);vertical-align:middle;}
 .trip-table tr:nth-child(even) td{background:#fafafa;}
+.trip-table tbody tr:hover td{background:var(--hover-bg);}
 .trip-table input{width:100%;padding:6px;border:1px solid #e0e0e0;border-radius:5px;font-size:12px;text-align:center;background:#fff;}
 .trip-table input.tl{text-align:left;}
 .trip-table .amt-cell{text-align:right;font-weight:700;color:var(--bd);padding-right:6px;white-space:nowrap;}
@@ -97,6 +115,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .bank-row .val{font-weight:700;}
 .tax-box{background:var(--gy);border-radius:8px;padding:14px;}
 .tax-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #e8e8e8;font-size:13px;}
+.tax-row small{display:block;font-size:10px;color:#777;font-weight:500;line-height:1.2;margin-top:2px;}
 .tax-row:last-child{border:none;}
 .tax-input{width:65px;padding:4px 6px;border:1.5px solid #ddd;border-radius:5px;font-size:12px;text-align:center;}
 .total-row{background:var(--bd);color:#fff;margin:6px -14px -14px;padding:12px 14px;border-radius:0 0 8px 8px;font-size:15px;font-weight:800;display:flex;justify-content:space-between;}
@@ -111,7 +130,9 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .tog-btn.active{background:var(--bm);color:#fff;}
 
 /* ── BUTTONS ── */
-.btn{padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+.btn{padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;transition:all .2s ease;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{transform:translateY(-1px);opacity:.95;}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
 .btn-primary{background:var(--bd);color:#fff;}
 .btn-success{background:#16a34a;color:#fff;}
 .btn-warn{background:var(--or);color:#333;}
@@ -158,7 +179,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
 .loading{text-align:center;padding:40px;color:#aaa;font-size:14px;}
 .empty{text-align:center;padding:40px;color:#bbb;}
 .search-bar{padding:9px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;width:100%;max-width:320px;}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:24px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:14px 22px;border-radius:14px;font-size:13px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 10px 25px rgba(0,0,0,.15);}
 .toast.show{opacity:1;}
 .toast.success{background:#16a34a;}
 .toast.error{background:var(--rd);}
@@ -479,6 +500,13 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
   /* Terms row if any */
   .terms-row{font-size:6.5pt;color:#555;margin-top:3pt;}
 }
+
+.global-loader{position:fixed;inset:0;background:rgba(255,255,255,.75);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:99999;}
+.hidden{display:none!important;}
+.loader-box{background:#fff;padding:24px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.1);text-align:center;min-width:180px;}
+.loader-spinner{width:40px;height:40px;border:4px solid #ddd;border-top:4px solid var(--bd);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
 </style>
 </head>
 <body>
@@ -610,6 +638,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
           <div class="tax-row" id="sgst-row"><span>SGST % <input class="tax-input" id="sgst-p" type="number" value="0" min="0" max="28" oninput="calc()"></span><span id="sgst-a">₹0.00</span></div>
           <div class="tax-row" id="igst-row"><span>IGST % <input class="tax-input" id="igst-p" type="number" value="0" min="0" max="28" oninput="calc()"></span><span id="igst-a">₹0.00</span></div>
           <div class="tax-row"><span>Pkg / Toll / State Tax</span><input class="tax-input" id="extra" type="number" value="0" oninput="calc()"></div>
+          <div class="tax-row"><span>Driver TA<small>Food / Night / Rental</small></span><input class="tax-input" id="driver-ta" type="number" value="0" min="0" oninput="calc()"></div>
           <div class="tax-row"><span>(-) Advance</span><input class="tax-input" id="adv" type="number" value="0" oninput="calc()"></div>
           <div class="balance-row"><span>Balance Due</span><span id="bal">₹0.00</span></div>
           <div class="total-row"><span>GRAND TOTAL</span><span id="grand">₹0.00</span></div>
@@ -631,7 +660,7 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
       </div>
 
       <div class="btn-group no-print">
-        <button class="btn btn-success" onclick="saveBill()">💾 Save Bill</button>
+        <button class="btn btn-success" id="save-bill-btn" onclick="saveBill()">💾 Save Bill</button>
         <button class="btn btn-primary" onclick="setTimeout(()=>window.print(),100)">🖨️ Print</button>
         <button class="btn btn-warn" onclick="resetBill()">🔄 New Bill</button>
       </div>
@@ -762,7 +791,8 @@ nav{background:var(--bd);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px 
         <div class="fg"><label>CGST %</label><input type="number" id="edit-cgst-p" value="0" oninput="calcEdit()"></div>
         <div class="fg"><label>SGST %</label><input type="number" id="edit-sgst-p" value="0" oninput="calcEdit()"></div>
         <div class="fg"><label>IGST %</label><input type="number" id="edit-igst-p" value="0" oninput="calcEdit()"></div>
-        <div class="fg"><label>Extra Charges</label><input type="number" id="edit-extra" value="0" oninput="calcEdit()"></div>
+    <div class="fg"><label>Extra Charges</label><input type="number" id="edit-extra" value="0" oninput="calcEdit()"></div>
+    <div class="fg"><label>Driver TA (Food / Night / Rental)</label><input type="number" id="edit-driver-ta" value="0" min="0" oninput="calcEdit()"></div>
         <div class="fg"><label>Advance</label><input type="number" id="edit-adv" value="0" oninput="calcEdit()"></div>
         <div class="fg"><label>Grand Total (auto)</label><input type="text" id="edit-grand" readonly style="background:#eef2f7;font-weight:800;color:var(--bd);"></div>
       </div>
@@ -881,6 +911,7 @@ if (checkSession()) { startApp(); }
    SUPABASE CONFIG
 ══════════════════════════════════════════ */
 const SURL = 'https://ckcjzvfnkckuesqqmuks.supabase.co';
+// IMPORTANT: Enable RLS policies in Supabase for security
 const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrY2p6dmZua2NrdWVzcXFtdWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzQ5MjQsImV4cCI6MjA5MDYxMDkyNH0.Hd0al1x3a7-refUXc8RVoBmyEBq6sQ9ovHbYJKVlWAM';
 const sb = supabase.createClient(SURL, SKEY);
 
@@ -896,6 +927,38 @@ const fmt = n => '₹' + INR.format(Number(n)||0);
 function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 const dCalc = debounce(()=>calc());
 
+
+async function retryOperation(fn, retries = 2){
+  for(let i=0;i<=retries;i++){
+    try{
+      return await fn();
+    }catch(err){
+      if(i===retries) throw err;
+      await new Promise(r=>setTimeout(r,1000));
+    }
+  }
+}
+
+function showLoader(text='Loading...'){
+  const loader=document.getElementById('global-loader');
+  const textEl=document.getElementById('loader-text');
+  if(textEl) textEl.textContent=text;
+  if(loader) loader.classList.remove('hidden');
+}
+
+function hideLoader(){
+  const loader=document.getElementById('global-loader');
+  if(loader) loader.classList.add('hidden');
+}
+
+async function safeSupabaseQuery(queryFn){
+  return retryOperation(async ()=>{
+    const result = await queryFn();
+    if(result?.error) throw result.error;
+    return result;
+  });
+}
+
 window.onload = async () => {
   document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('vlist').innerHTML = VEHICLES.map(v=>`<option value="${v}">`).join('');
@@ -907,6 +970,7 @@ window.onload = async () => {
     sgstP:    document.getElementById('sgst-p'),
     igstP:    document.getElementById('igst-p'),
     extra:    document.getElementById('extra'),
+    driverTA: document.getElementById('driver-ta'),
     adv:      document.getElementById('adv'),
     subtotal: document.getElementById('subtotal'),
     cgstA:    document.getElementById('cgst-a'),
@@ -1010,6 +1074,19 @@ function getCurrentBank(){
   return isDefault ? null : bk;
 }
 
+function getBillDriverTA(b={}){
+  return Number(b.bank_details?.driver_ta ?? b.driver_ta ?? 0) || 0;
+}
+
+function buildBankDetailsWithDriverTA(bankData, driverTA){
+  const ta = Number(driverTA) || 0;
+  const base = bankData ? {...bankData} : (ta ? {...DEFAULT_BANK} : null);
+  if(!base) return null;
+  if(ta>0) base.driver_ta = ta;
+  else delete base.driver_ta;
+  return base;
+}
+
 /* ── GST TOGGLE ── */
 function setGST(v) {
   isGST = v;
@@ -1105,8 +1182,9 @@ function calc() {
   const sg = isGST ? sub*(parseFloat(EL.sgstP.value)||0)/100 : 0;
   const ig = isGST ? sub*(parseFloat(EL.igstP.value)||0)/100 : 0;
   const ex = parseFloat(EL.extra.value)||0;
+  const driverTA = parseFloat(EL.driverTA.value)||0;
   const ad = parseFloat(EL.adv.value)||0;
-  const gr = sub+cg+sg+ig+ex;
+  const gr = sub+cg+sg+ig+ex+driverTA;
   const bl = gr-ad;
   EL.subtotal.textContent = fmt(sub);
   EL.cgstA.textContent    = fmt(cg);
@@ -1187,7 +1265,14 @@ function buildBillHTML(b){
     .gtotal{background:#1B3A6B;color:#fff;border-radius:5pt;padding:7pt 10pt;display:flex;justify-content:space-between;font-size:11pt;font-weight:800;margin-top:5pt;}
     .bal{background:#C00000;color:#fff;border-radius:5pt;padding:6pt 10pt;display:flex;justify-content:space-between;font-size:9pt;font-weight:700;margin-top:3pt;}
     .words{background:#FFF2CC;border:1px solid #d4b800;border-radius:5pt;padding:6pt 10pt;font-size:8pt;font-weight:600;color:#1B3A6B;margin-top:6pt;}
-  </style></head><body>
+  
+.global-loader{position:fixed;inset:0;background:rgba(255,255,255,.75);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:99999;}
+.hidden{display:none!important;}
+.loader-box{background:#fff;padding:24px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.1);text-align:center;min-width:180px;}
+.loader-spinner{width:40px;height:40px;border:4px solid #ddd;border-top:4px solid var(--bd);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+</style></head><body>
   <div class="top">
     <div class="co"><h2>KAGDIYAL HOLIDAYS</h2><p>24X7 PAN INDIA TOUR AND LOCAL RENTAL IN DELHI</p><p style="font-size:6.5pt;color:#aad4f5;margin-top:3pt;">GSTIN: 07OGUPS2098E1ZF &nbsp;|&nbsp; PAN: OGUPS2098E</p></div>
     <div class="meta">
@@ -1227,14 +1312,23 @@ function buildBillHTML(b){
       ${b.is_gst&&b.cgst?`<div class="tr2"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
       ${b.is_gst&&b.sgst?`<div class="tr2"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
       ${b.is_gst&&b.igst?`<div class="tr2"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
-      ${b.extra_charges?`<div class="tr2"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+      ${b.extra_charges?`<div class="tr2"><span>Pkg / Toll / State Tax</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+      ${getBillDriverTA(b)?`<div class="tr2"><span>Driver TA (Food / Night / Rental)</span><span>${fmt(getBillDriverTA(b))}</span></div>`:''}
       ${b.advance?`<div class="tr2"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
       <div class="gtotal"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
       <div class="bal"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
     </div>
   </div>
   <div class="words">Rs. ${n2w(Math.round(b.grand_total||0))} Only /-</div>
-  </body></html>`;
+  
+<div id="global-loader" class="global-loader hidden">
+  <div class="loader-box">
+    <div class="loader-spinner"></div>
+    <div id="loader-text">Loading...</div>
+  </div>
+</div>
+
+</body></html>`;
 }
 
 /* ── GENERATE PDF (returns blob) ── */
@@ -1292,8 +1386,9 @@ async function sendPDFtoWA(){
     const sg=isGST?sub*(parseFloat(document.getElementById('sgst-p').value)||0)/100:0;
     const ig=isGST?sub*(parseFloat(document.getElementById('igst-p').value)||0)/100:0;
     const ex=parseFloat(document.getElementById('extra').value)||0;
+    const driverTA=parseFloat(document.getElementById('driver-ta').value)||0;
     const ad=parseFloat(document.getElementById('adv').value)||0;
-    const gr=sub+cg+sg+ig+ex;
+    const gr=sub+cg+sg+ig+ex+driverTA;
     const tempBill={
       bill_no:billNo,
       bill_date:document.getElementById('bill-date').value,
@@ -1306,12 +1401,12 @@ async function sendPDFtoWA(){
       cust_booked:document.getElementById('cb').value,
       cust_phone:document.getElementById('cph').value,
       items,subtotal:sub,cgst:cg,sgst:sg,igst:ig,
-      extra_charges:ex,advance:ad,grand_total:gr,
+      extra_charges:ex,driver_ta:driverTA,advance:ad,grand_total:gr,
       balance_due:Math.max(0,gr-ad),
       cgst_pct:parseFloat(document.getElementById('cgst-p').value)||0,
       sgst_pct:parseFloat(document.getElementById('sgst-p').value)||0,
       igst_pct:parseFloat(document.getElementById('igst-p').value)||0,
-      bank_details:getCurrentBank(),
+      bank_details:buildBankDetailsWithDriverTA(getCurrentBank(), driverTA),
     };
     await sharePDFviaWA(tempBill, statusEl);
   }catch(e){
@@ -1390,6 +1485,13 @@ async function saveBill(){
     return;
   }
 
+  const saveBtn = document.getElementById('save-bill-btn');
+  if(saveBtn){
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '⏳ Saving...';
+  }
+  showLoader('Saving bill...');
+
   const items=[];
   document.querySelectorAll('#tbody tr:not(.ex-expand)').forEach(tr=>{
     const date=tr.querySelector('.r-date')?.value||'';
@@ -1411,9 +1513,10 @@ async function saveBill(){
   const sg=isGST?sub*(parseFloat(document.getElementById('sgst-p').value)||0)/100:0;
   const ig=isGST?sub*(parseFloat(document.getElementById('igst-p').value)||0)/100:0;
   const ex=parseFloat(document.getElementById('extra').value)||0;
+  const driverTA=parseFloat(document.getElementById('driver-ta').value)||0;
   const ad=parseFloat(document.getElementById('adv').value)||0;
-  const gr=sub+cg+sg+ig+ex;
-  const bankData = getCurrentBank();
+  const gr=sub+cg+sg+ig+ex+driverTA;
+  const bankData = buildBankDetailsWithDriverTA(getCurrentBank(), driverTA);
   const {error}=await sb.from('bills').insert([{
     bill_no:billNo,
     bill_date:document.getElementById('bill-date').value,
@@ -1440,6 +1543,11 @@ async function saveBill(){
     toast('Bill saved! ✅','success');
     await fetchNextBillNo();
   }
+  hideLoader();
+  if(saveBtn){
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '💾 Save Bill';
+  }
 }
 
 function resetBill(){
@@ -1448,6 +1556,7 @@ function resetBill(){
   document.getElementById('cust-select').value='';
   document.getElementById('adv').value=0;
   document.getElementById('extra').value=0;
+  document.getElementById('driver-ta').value=0;
   document.getElementById('tbody').innerHTML='';
   document.getElementById('bill-date').value=new Date().toISOString().split('T')[0];
   loadSavedBank();
@@ -1594,7 +1703,8 @@ async function viewBill(id){
         ${b.is_gst&&b.cgst?`<div class="bd-tax-row"><span>CGST (${b.cgst_pct}%)</span><span>${fmt(b.cgst)}</span></div>`:''}
         ${b.is_gst&&b.sgst?`<div class="bd-tax-row"><span>SGST (${b.sgst_pct}%)</span><span>${fmt(b.sgst)}</span></div>`:''}
         ${b.is_gst&&b.igst?`<div class="bd-tax-row"><span>IGST (${b.igst_pct}%)</span><span>${fmt(b.igst)}</span></div>`:''}
-        ${b.extra_charges?`<div class="bd-tax-row"><span>Extra Charges</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+        ${b.extra_charges?`<div class="bd-tax-row"><span>Pkg / Toll / State Tax</span><span>${fmt(b.extra_charges)}</span></div>`:''}
+        ${getBillDriverTA(b)?`<div class="bd-tax-row"><span>Driver TA</span><span>${fmt(getBillDriverTA(b))}<br><small>Food / Night / Rental</small></span></div>`:''}
         ${b.advance?`<div class="bd-tax-row"><span>(-) Advance</span><span>${fmt(b.advance)}</span></div>`:''}
         <div class="bd-total"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
         <div class="bd-balance"><span>Balance Due</span><span>${b.balance_due>0?fmt(b.balance_due):'PAID ✅'}</span></div>
@@ -1647,6 +1757,7 @@ async function editBill(id){
   document.getElementById('edit-sgst-p').value=b.sgst_pct||0;
   document.getElementById('edit-igst-p').value=b.igst_pct||0;
   document.getElementById('edit-extra').value=b.extra_charges||0;
+  document.getElementById('edit-driver-ta').value=getBillDriverTA(b);
   document.getElementById('edit-adv').value=b.advance||0;
   const bk=b.bank_details||DEFAULT_BANK;
   document.getElementById('ebk-bank').value=bk.bank||DEFAULT_BANK.bank;
@@ -1729,7 +1840,8 @@ function calcEdit(){
   const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
   const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
   const ex=parseFloat(document.getElementById('edit-extra').value)||0;
-  const gr=sub+cg+sg+ig+ex;
+  const driverTA=parseFloat(document.getElementById('edit-driver-ta').value)||0;
+  const gr=sub+cg+sg+ig+ex+driverTA;
   document.getElementById('edit-grand').value=fmt(gr);
 }
 async function saveEditBill(){
@@ -1755,8 +1867,9 @@ async function saveEditBill(){
   const sg=sub*(parseFloat(document.getElementById('edit-sgst-p').value)||0)/100;
   const ig=sub*(parseFloat(document.getElementById('edit-igst-p').value)||0)/100;
   const ex=parseFloat(document.getElementById('edit-extra').value)||0;
+  const driverTA=parseFloat(document.getElementById('edit-driver-ta').value)||0;
   const ad=parseFloat(document.getElementById('edit-adv').value)||0;
-  const gr=sub+cg+sg+ig+ex;
+  const gr=sub+cg+sg+ig+ex+driverTA;
   const cgp=parseFloat(document.getElementById('edit-cgst-p').value)||0;
   const sgp=parseFloat(document.getElementById('edit-sgst-p').value)||0;
   const igp=parseFloat(document.getElementById('edit-igst-p').value)||0;
@@ -1774,7 +1887,7 @@ async function saveEditBill(){
     extra_charges:ex,advance:ad,grand_total:gr,
     balance_due:Math.max(0,gr-ad),
     cgst_pct:cgp,sgst_pct:sgp,igst_pct:igp,
-    bank_details:(()=>{const bk={bank:document.getElementById('ebk-bank').value||DEFAULT_BANK.bank,name:document.getElementById('ebk-name').value||DEFAULT_BANK.name,acno:document.getElementById('ebk-acno').value||DEFAULT_BANK.acno,branch:document.getElementById('ebk-branch').value||DEFAULT_BANK.branch,ifsc:document.getElementById('ebk-ifsc').value||DEFAULT_BANK.ifsc};return JSON.stringify(bk)===JSON.stringify(DEFAULT_BANK)?null:bk;})(),
+    bank_details:(()=>{const bk={bank:document.getElementById('ebk-bank').value||DEFAULT_BANK.bank,name:document.getElementById('ebk-name').value||DEFAULT_BANK.name,acno:document.getElementById('ebk-acno').value||DEFAULT_BANK.acno,branch:document.getElementById('ebk-branch').value||DEFAULT_BANK.branch,ifsc:document.getElementById('ebk-ifsc').value||DEFAULT_BANK.ifsc};const bankData=JSON.stringify(bk)===JSON.stringify(DEFAULT_BANK)?null:bk;return buildBankDetailsWithDriverTA(bankData,driverTA);})(),
   }).eq('id',id);
   if(error){toast('Error: '+error.message,'error');}
   else{
@@ -1911,7 +2024,8 @@ async function exportExcel(type='all'){
     'SGST (₹)': b.sgst||0,
     'IGST %': b.igst_pct||0,
     'IGST (₹)': b.igst||0,
-    'Extra Charges (₹)': b.extra_charges||0,
+    'Pkg / Toll / State Tax (₹)': b.extra_charges||0,
+    'Driver TA (₹)': getBillDriverTA(b),
     'Grand Total (₹)': b.grand_total||0,
     'Advance (₹)': b.advance||0,
     'Balance Due (₹)': b.balance_due||0,
@@ -1958,7 +2072,7 @@ async function exportExcel(type='all'){
 
   const ws1=XLSX.utils.json_to_sheet(summaryRows);
   // Column widths for sheet 1
-  ws1['!cols']=[{wch:5},{wch:8},{wch:12},{wch:25},{wch:20},{wch:20},{wch:18},{wch:8},{wch:14},{wch:14},{wch:10},{wch:12},{wch:8},{wch:10},{wch:8},{wch:10},{wch:8},{wch:10},{wch:14},{wch:14},{wch:12},{wch:14},{wch:10}];
+  ws1['!cols']=[{wch:5},{wch:8},{wch:12},{wch:25},{wch:20},{wch:20},{wch:18},{wch:8},{wch:14},{wch:14},{wch:10},{wch:12},{wch:8},{wch:10},{wch:8},{wch:10},{wch:8},{wch:10},{wch:18},{wch:12},{wch:14},{wch:12},{wch:14},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws1,sheetName);
 
   if(itemRows.length){
@@ -1977,10 +2091,1148 @@ async function exportExcel(type='all'){
 </script>
 
 <script>
+/* KH Plus: private-use upgrades, free features, and polish */
+(() => {
+  const DRAFT_KEY = 'kh_bill_draft_v3';
+  const VEHICLE_KEY = 'kh_vehicle_master_v1';
+  const ROUTE_KEY = 'kh_route_master_v1';
+  const RATE_KEY = 'kh_route_rate_master_v1';
+  const DELETED_KEY = 'kh_deleted_backup_v1';
+  const QR_URL = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+  let applyingDraft = false;
+  let qrLoading;
+
+  const $ = id => document.getElementById(id);
+  const money = v => Number(v) || 0;
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const phoneDigits = v => String(v || '').replace(/\D/g, '');
+
+  function bankFromBill(b = {}) {
+    const raw = b.bank_details && typeof b.bank_details === 'object' ? b.bank_details : {};
+    return {...DEFAULT_BANK, upi: '', ...raw};
+  }
+
+  function paymentsOf(b = {}) {
+    const raw = bankFromBill(b).payments;
+    return Array.isArray(raw) ? raw : [];
+  }
+
+  function paymentsTotal(b = {}) {
+    return paymentsOf(b).reduce((sum, p) => sum + money(p.amount), 0);
+  }
+
+  function paidTotal(b = {}) {
+    return money(b.advance) + paymentsTotal(b);
+  }
+
+  function computedDue(b = {}) {
+    return Math.max(0, money(b.grand_total) - paidTotal(b));
+  }
+
+  function displayDue(b = {}) {
+    return b.balance_due === null || b.balance_due === undefined ? computedDue(b) : money(b.balance_due);
+  }
+
+  function paymentRowsHTML(b, editable = false) {
+    const payments = paymentsOf(b);
+    if (!payments.length && !money(b.advance)) return '<div class="empty" style="padding:14px;">No payments recorded yet.</div>';
+    const actionHead = editable ? '<th class="no-print"></th>' : '';
+    const advance = money(b.advance) ? `<tr><td>${esc(b.bill_date || '')}</td><td>Advance</td><td class="tl">Bill advance</td><td style="font-weight:700;">${fmt(b.advance)}</td>${editable ? '<td></td>' : ''}</tr>` : '';
+    const rows = payments.map((p, i) => `<tr>
+      <td>${esc(p.date || '')}</td>
+      <td>${esc(p.mode || 'Payment')}</td>
+      <td class="tl">${esc(p.note || '')}</td>
+      <td style="font-weight:700;">${fmt(p.amount)}</td>
+      ${editable ? `<td class="no-print"><button class="btn btn-sm" style="background:#fee2e2;color:#c00;" onclick="KHPlus.deletePayment(${i})">Delete</button></td>` : ''}
+    </tr>`).join('');
+    return `<table class="hist-table kh-pay-table"><thead><tr><th>Date</th><th>Mode</th><th>Note</th><th>Amount</th>${actionHead}</tr></thead><tbody>${advance}${rows}</tbody></table>`;
+  }
+
+  function injectStyles() {
+    if ($('kh-plus-style')) return;
+    document.head.insertAdjacentHTML('beforeend', `<style id="kh-plus-style">
+      .kh-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+      .kh-toolbar .search-bar,.kh-toolbar input,.kh-toolbar select{min-height:36px;}
+      .kh-panel{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-top:12px;}
+      .kh-qr-box{display:none;align-items:center;gap:10px;background:#fff;border:1px dashed #94a3b8;border-radius:8px;padding:10px;margin-top:10px;}
+      .kh-qr-box img{width:96px;height:96px;border-radius:6px;border:1px solid #e5e7eb;}
+      .kh-qr-box strong{color:var(--bd);font-size:12px;}
+      .kh-mini{font-size:11px;color:#64748b;line-height:1.35;}
+      .kh-master-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+      .kh-master-grid textarea{min-height:94px;resize:vertical;}
+      .kh-pay-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+      .kh-pay-summary .stat-card{padding:12px;box-shadow:none;border:1px solid #e5e7eb;border-left:4px solid var(--bm);}
+      .kh-pay-table td,.kh-pay-table th{font-size:12px;}
+      .kh-danger-note{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:8px;padding:9px 11px;font-size:12px;margin-top:10px;}
+      @media(max-width:640px){.kh-master-grid,.kh-pay-summary{grid-template-columns:1fr}.kh-toolbar>*{width:100%;max-width:none!important}.kh-qr-box{align-items:flex-start}}
+    </style>`);
+  }
+
+  function injectBaseUI() {
+    injectStyles();
+
+    const ifsc = $('bk-ifsc');
+    if (ifsc && !$('bk-upi')) {
+      ifsc.closest('.bank-row')?.insertAdjacentHTML('afterend', `
+        <div class="bank-row" style="margin-top:6px;"><span class="lbl">UPI ID:</span><input id="bk-upi" type="text" placeholder="optional, e.g. name@upi" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>`);
+      $('bank-box')?.insertAdjacentHTML('beforeend', `
+        <div id="upi-live-box" class="kh-qr-box">
+          <div id="upi-live-qr"></div>
+          <div><strong>UPI QR</strong><div class="kh-mini">Shows on PDF/print when UPI ID is filled.</div></div>
+        </div>`);
+    }
+
+    const editIfsc = $('ebk-ifsc');
+    if (editIfsc && !$('ebk-upi')) {
+      editIfsc.closest('.bank-row')?.insertAdjacentHTML('afterend', `
+        <div class="bank-row"><span class="lbl" style="min-width:80px;">UPI ID:</span><input id="ebk-upi" type="text" placeholder="optional" style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;"></div>`);
+    }
+
+    const billButtons = document.querySelector('#page-new-bill .btn-group');
+    if (billButtons && !$('draft-save-btn')) {
+      billButtons.insertAdjacentHTML('beforeend', `
+        <button class="btn btn-sm" id="draft-save-btn" style="background:#dbeafe;color:#1e40af;" onclick="KHPlus.saveDraft()">Save Draft</button>
+        <button class="btn btn-sm" id="draft-load-btn" style="background:#eef2ff;color:#3730a3;" onclick="KHPlus.loadDraft()">Load Draft</button>
+        <button class="btn btn-sm" style="background:#f3f4f6;color:#374151;" onclick="KHPlus.clearDraft()">Clear Draft</button>`);
+    }
+
+    const histTools = document.querySelector('#page-history .card-bd > div');
+    if (histTools && !$('hist-status')) {
+      histTools.classList.add('kh-toolbar');
+      histTools.insertAdjacentHTML('beforeend', `
+        <select id="hist-status" onchange="filterBills()"><option value="">All Status</option><option value="due">Due</option><option value="paid">Paid</option></select>
+        <select id="hist-type" onchange="filterBills()"><option value="">All Types</option><option value="gst">GST</option><option value="nongst">Non-GST</option></select>
+        <input type="date" id="hist-from" onchange="filterBills()" title="From date">
+        <input type="date" id="hist-to" onchange="filterBills()" title="To date">`);
+    }
+
+    const dueTools = document.querySelector('#page-dues .card-bd > div');
+    if (dueTools && !$('due-from')) {
+      dueTools.classList.add('kh-toolbar');
+      dueTools.insertAdjacentHTML('beforeend', `
+        <input type="date" id="due-from" onchange="filterDues()" title="From date">
+        <input type="date" id="due-to" onchange="filterDues()" title="To date">`);
+    }
+
+    const dashControls = document.querySelector('#page-dashboard .card-bd > div');
+    if (dashControls && !$('kh-backup-file')) {
+      dashControls.classList.add('kh-toolbar');
+      dashControls.insertAdjacentHTML('beforeend', `
+        <button class="btn btn-sm no-print" style="background:#0f766e;color:#fff;" onclick="KHPlus.exportBackup()">Backup JSON</button>
+        <button class="btn btn-sm no-print" style="background:#7c3aed;color:#fff;" onclick="KHPlus.pickRestore()">Restore JSON</button>
+        <button class="btn btn-sm no-print" style="background:#f3f4f6;color:#374151;" onclick="KHPlus.restoreLastDeleted()">Restore Last Deleted</button>
+        <input id="kh-backup-file" type="file" accept="application/json,.json" style="display:none" onchange="KHPlus.restoreBackup(this.files[0]);this.value='';">`);
+    }
+
+    const custAdd = document.querySelector('#page-customers .card .card-bd');
+    if (custAdd && !$('cust-edit-id')) {
+      custAdd.insertAdjacentHTML('afterbegin', '<input type="hidden" id="cust-edit-id">');
+      custAdd.querySelector('button[onclick="saveCustomer()"]')?.insertAdjacentHTML('afterend', `
+        <button class="btn" id="cust-cancel-edit" style="display:none;background:#eee;color:#333;margin-left:8px;" onclick="KHPlus.cancelCustomerEdit()">Cancel Edit</button>`);
+    }
+
+    const custPage = $('page-customers');
+    if (custPage && !$('kh-master-card')) {
+      const allCustCard = custPage.querySelectorAll('.card')[1];
+      allCustCard?.insertAdjacentHTML('beforebegin', `
+        <div class="card" id="kh-master-card">
+          <div class="card-hd">Masters: Vehicles, Routes and Rates</div>
+          <div class="card-bd">
+            <div class="kh-master-grid">
+              <div class="fg"><label>Vehicles (one per line)</label><textarea id="master-vehicles" placeholder="Sedan 1234&#10;Crysta 5678"></textarea></div>
+              <div class="fg"><label>Routes / Duties (one per line)</label><textarea id="master-routes" placeholder="Delhi Local Full Day&#10;Airport Transfer"></textarea></div>
+            </div>
+            <div class="kh-toolbar" style="margin-top:6px;">
+              <input class="search-bar" id="master-rate-route" list="rlist" placeholder="Route / Duty for rate">
+              <input class="search-bar" id="master-rate-amount" type="number" placeholder="Rate" style="max-width:140px;">
+              <button class="btn btn-sm btn-primary" onclick="KHPlus.addRateMaster()">Save Rate</button>
+              <button class="btn btn-sm" style="background:#16a34a;color:#fff;" onclick="KHPlus.saveMasters()">Save Masters</button>
+            </div>
+            <div class="kh-mini" id="master-rate-list"></div>
+          </div>
+        </div>`);
+    }
+
+    if (!$('payment-modal')) {
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="payment-modal">
+          <div class="modal" style="max-width:720px;">
+            <div class="modal-hd">
+              <h3 id="payment-title">Record Payment</h3>
+              <button class="modal-close" onclick="closeModal('payment-modal')">x</button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="payment-bill-id">
+              <div id="payment-summary" class="kh-pay-summary"></div>
+              <div class="kh-panel">
+                <div class="grid2">
+                  <div class="fg"><label>Date</label><input id="pay-date" type="date"></div>
+                  <div class="fg"><label>Amount</label><input id="pay-amount" type="number" min="0" step="0.01"></div>
+                  <div class="fg"><label>Mode</label><select id="pay-mode"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Cheque</option><option>Adjustment</option></select></div>
+                  <div class="fg"><label>Note</label><input id="pay-note" type="text" placeholder="Reference / remark"></div>
+                </div>
+                <button class="btn btn-success" onclick="KHPlus.savePayment()">Save Payment</button>
+              </div>
+              <div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;">Payment History</div>
+              <div id="payment-history"></div>
+            </div>
+          </div>
+        </div>`);
+    }
+  }
+
+  function readStoredList(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]').filter(Boolean); } catch { return []; }
+  }
+
+  function readRateMap() {
+    try { return JSON.parse(localStorage.getItem(RATE_KEY) || '{}') || {}; } catch { return {}; }
+  }
+
+  function linesFromTextarea(id) {
+    return ($(id)?.value || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  }
+
+  function unique(values) {
+    return [...new Set(values.map(v => String(v || '').trim()).filter(Boolean))];
+  }
+
+  function refreshDatalists() {
+    const vehicles = unique([...(typeof VEHICLES !== 'undefined' ? VEHICLES : []), ...readStoredList(VEHICLE_KEY)]);
+    const routes = unique([...(typeof ROUTES !== 'undefined' ? ROUTES : []), ...readStoredList(ROUTE_KEY), ...Object.keys(readRateMap())]);
+    if ($('vlist')) $('vlist').innerHTML = vehicles.map(v => `<option value="${esc(v)}">`).join('');
+    if ($('rlist')) $('rlist').innerHTML = routes.map(r => `<option value="${esc(r)}">`).join('');
+    if ($('master-vehicles')) $('master-vehicles').value = readStoredList(VEHICLE_KEY).join('\n');
+    if ($('master-routes')) $('master-routes').value = readStoredList(ROUTE_KEY).join('\n');
+    renderRateMasters();
+  }
+
+  function renderRateMasters() {
+    const box = $('master-rate-list');
+    if (!box) return;
+    const rates = readRateMap();
+    const entries = Object.entries(rates);
+    box.innerHTML = entries.length ? 'Saved rates: ' + entries.map(([r, a]) => `${esc(r)} = ${fmt(a)}`).join(' | ') : 'No saved route rates yet.';
+  }
+
+  function saveMasters() {
+    localStorage.setItem(VEHICLE_KEY, JSON.stringify(unique(linesFromTextarea('master-vehicles'))));
+    localStorage.setItem(ROUTE_KEY, JSON.stringify(unique(linesFromTextarea('master-routes'))));
+    refreshDatalists();
+    toast('Masters saved', 'success');
+  }
+
+  function addRateMaster() {
+    const route = $('master-rate-route')?.value.trim();
+    const rate = money($('master-rate-amount')?.value);
+    if (!route || !rate) { toast('Route and rate required', 'error'); return; }
+    const rates = readRateMap();
+    rates[route] = rate;
+    localStorage.setItem(RATE_KEY, JSON.stringify(rates));
+    if ($('master-rate-route')) $('master-rate-route').value = '';
+    if ($('master-rate-amount')) $('master-rate-amount').value = '';
+    refreshDatalists();
+    toast('Rate saved', 'success');
+  }
+
+  function applyKnownRate(input) {
+    const route = input.value.trim();
+    if (!route) return;
+    const rates = readRateMap();
+    const matchKey = Object.keys(rates).find(k => k.toLowerCase() === route.toLowerCase());
+    if (!matchKey) return;
+    const tr = input.closest('tr');
+    const rateInput = tr?.querySelector('.r-rate,.er-rate');
+    if (rateInput && !rateInput.value) {
+      rateInput.value = rates[matchKey];
+      if (tr.closest('#edit-tbody')) calcEdit(); else calc();
+    }
+  }
+
+  function getCurrentBankPlus() {
+    const bk = {
+      bank: $('bk-bank')?.value || DEFAULT_BANK.bank,
+      name: $('bk-name')?.value || DEFAULT_BANK.name,
+      acno: $('bk-acno')?.value || DEFAULT_BANK.acno,
+      branch: $('bk-branch')?.value || DEFAULT_BANK.branch,
+      ifsc: $('bk-ifsc')?.value || DEFAULT_BANK.ifsc,
+      upi: $('bk-upi')?.value.trim() || '',
+    };
+    const base = {...DEFAULT_BANK, upi: ''};
+    const isDefault = JSON.stringify(bk) === JSON.stringify(base);
+    if (!isDefault) sessionStorage.setItem('kh_last_bank', JSON.stringify(bk));
+    return isDefault ? null : bk;
+  }
+
+  function loadSavedBankPlus() {
+    let saved = {...DEFAULT_BANK, upi: ''};
+    try {
+      const s = sessionStorage.getItem('kh_last_bank');
+      if (s) saved = {...saved, ...JSON.parse(s)};
+    } catch {}
+    if ($('bk-bank')) $('bk-bank').value = saved.bank;
+    if ($('bk-name')) $('bk-name').value = saved.name;
+    if ($('bk-acno')) $('bk-acno').value = saved.acno;
+    if ($('bk-branch')) $('bk-branch').value = saved.branch;
+    if ($('bk-ifsc')) $('bk-ifsc').value = saved.ifsc;
+    if ($('bk-upi')) $('bk-upi').value = saved.upi || '';
+    renderCurrentUPIQR();
+  }
+
+  function buildBankDetailsPlus(bankData, driverTA) {
+    const ta = money(driverTA);
+    const base = bankData ? {...bankData} : (ta ? {...DEFAULT_BANK} : null);
+    if (!base) return null;
+    if (ta > 0) base.driver_ta = ta; else delete base.driver_ta;
+    return base;
+  }
+
+  function buildUPIUri(amountValue, note, bankData) {
+    const bk = bankData || getCurrentBankPlus() || {...DEFAULT_BANK, upi: ''};
+    const upi = String(bk.upi || '').trim();
+    if (!upi) return '';
+    const params = new URLSearchParams();
+    params.set('pa', upi);
+    params.set('pn', bk.name || 'Kagdiyal Holidays');
+    if (amountValue > 0) params.set('am', String(Number(amountValue).toFixed(2)));
+    params.set('cu', 'INR');
+    params.set('tn', note || 'Kagdiyal Holidays Bill');
+    return 'upi://pay?' + params.toString();
+  }
+
+  async function loadQRCodeLibrary() {
+    if (window.QRCode?.toDataURL) return true;
+    if (!qrLoading) {
+      qrLoading = new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = QR_URL;
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+    return qrLoading;
+  }
+
+  async function renderQR(targetId, upiUri) {
+    const target = $(targetId);
+    if (!target) return '';
+    if (!upiUri) { target.innerHTML = ''; return ''; }
+    const ok = await loadQRCodeLibrary();
+    if (!ok || !window.QRCode?.toDataURL) {
+      target.innerHTML = '<div class="kh-mini">UPI QR needs internet once to load.</div>';
+      return '';
+    }
+    const dataUrl = await QRCode.toDataURL(upiUri, {width: 160, margin: 1});
+    target.innerHTML = `<img src="${dataUrl}" alt="UPI QR">`;
+    return dataUrl;
+  }
+
+  const renderCurrentUPIQR = debounce(async () => {
+    const box = $('upi-live-box');
+    if (!box) return;
+    const grand = money(($('grand')?.textContent || '').replace(/[^\d.]/g, ''));
+    const billNo = $('bill-no')?.value || '';
+    const uri = buildUPIUri(grand, `Bill ${billNo}`);
+    box.style.display = uri ? 'flex' : 'none';
+    if (uri) await renderQR('upi-live-qr', uri);
+  }, 350);
+
+  async function enrichBillQR(b) {
+    const bk = bankFromBill(b);
+    const uri = buildUPIUri(displayDue(b) || money(b.grand_total), `Bill ${b.bill_no}`, bk);
+    if (!uri) return b;
+    const ok = await loadQRCodeLibrary();
+    if (ok && window.QRCode?.toDataURL) {
+      b._upiQR = await QRCode.toDataURL(uri, {width: 170, margin: 1});
+    }
+    return b;
+  }
+
+  function updateWAPlus(gr, bl) {
+    const nm = $('cn')?.value || 'Customer';
+    const bn = $('bill-no')?.value || '';
+    const bd = $('bill-date')?.value || '';
+    const bk = getCurrentBankPlus() || {...DEFAULT_BANK, upi: ''};
+    const upiLine = bk.upi ? `\nUPI: ${bk.upi}` : '';
+    if ($('wa-msg')) {
+      $('wa-msg').value = `Kagdiyal Holidays\n\nDear ${nm},\n\nYour Bill No. ${bn} dated ${bd} is ready.\n\nAmount: ${fmt(gr)}\n${bl > 0 ? `Balance Due: ${fmt(bl)}` : 'Fully Paid'}\n\nPayment:\n${bk.bank} | A/C: ${bk.acno}\nIFSC: ${bk.ifsc}${upiLine}\n\nThank you for choosing Kagdiyal Holidays.`;
+    }
+  }
+
+  function readItemsFrom(tbodySelector, prefix) {
+    const items = [];
+    document.querySelectorAll(`${tbodySelector} tr:not(.ex-expand)`).forEach(tr => {
+      const exTr = tr.nextElementSibling?.classList.contains('ex-expand') ? tr.nextElementSibling : null;
+      const rate = money(tr.querySelector(`.${prefix}-rate`)?.value);
+      const qty = money(tr.querySelector(`.${prefix}-qty`)?.value) || 1;
+      const km = money(exTr?.querySelector(`.${prefix}-exkm`)?.value);
+      const kmr = money(exTr?.querySelector(`.${prefix}-exkmr`)?.value);
+      const hr = money(exTr?.querySelector(`.${prefix}-exhr`)?.value);
+      const hrr = money(exTr?.querySelector(`.${prefix}-exhrr`)?.value);
+      const amount = (rate * qty) + (km * kmr) + (hr * hrr);
+      items.push({
+        date: tr.querySelector(`.${prefix}-date`)?.value || '',
+        vehicle: tr.querySelector(`.${prefix}-veh`)?.value || '',
+        desc: tr.querySelector(`.${prefix}-rte`)?.value || '',
+        rate, qty, ex_km: km, ex_km_rate: kmr, ex_hr: hr, ex_hr_rate: hrr, amount
+      });
+    });
+    return items;
+  }
+
+  function collectDraft() {
+    return {
+      saved_at: new Date().toISOString(),
+      isGST,
+      bill_date: $('bill-date')?.value || '',
+      cust_name: $('cn')?.value || '',
+      cust_address: $('ca')?.value || '',
+      cust_gstin: $('cg')?.value || '',
+      cust_guest: $('cgu')?.value || '',
+      cust_state: $('cs')?.value || '',
+      cust_booked: $('cb')?.value || '',
+      cust_phone: $('cph')?.value || '',
+      cgst_pct: money($('cgst-p')?.value),
+      sgst_pct: money($('sgst-p')?.value),
+      igst_pct: money($('igst-p')?.value),
+      extra_charges: money($('extra')?.value),
+      driver_ta: money($('driver-ta')?.value),
+      advance: money($('adv')?.value),
+      bank: getCurrentBankPlus(),
+      items: readItemsFrom('#tbody', 'r').filter(i => i.date || i.vehicle || i.desc || i.rate || i.amount),
+    };
+  }
+
+  const autoSaveDraft = debounce(() => {
+    if (applyingDraft) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft())); } catch {}
+  }, 800);
+
+  function saveDraft(show = true) {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft()));
+    if (show) toast('Draft saved', 'success');
+  }
+
+  function applyDraft(d) {
+    if (!d) return;
+    applyingDraft = true;
+    setGST(d.isGST !== false);
+    ['cn','ca','cg','cgu','cs','cb','cph'].forEach(id => { if ($(id)) $(id).value = d[{cn:'cust_name',ca:'cust_address',cg:'cust_gstin',cgu:'cust_guest',cs:'cust_state',cb:'cust_booked',cph:'cust_phone'}[id]] || ''; });
+    if ($('bill-date')) $('bill-date').value = d.bill_date || todayISO();
+    if ($('cgst-p')) $('cgst-p').value = d.cgst_pct ?? 5;
+    if ($('sgst-p')) $('sgst-p').value = d.sgst_pct ?? 0;
+    if ($('igst-p')) $('igst-p').value = d.igst_pct ?? 0;
+    if ($('extra')) $('extra').value = d.extra_charges || 0;
+    if ($('driver-ta')) $('driver-ta').value = d.driver_ta || 0;
+    if ($('adv')) $('adv').value = d.advance || 0;
+    if (d.bank) {
+      sessionStorage.setItem('kh_last_bank', JSON.stringify(d.bank));
+      loadSavedBankPlus();
+    }
+    if ($('tbody')) {
+      $('tbody').innerHTML = '';
+      (d.items?.length ? d.items : [{}, {}, {}]).forEach(item => addRow(item));
+    }
+    calc();
+    applyingDraft = false;
+  }
+
+  function loadDraft() {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) { toast('No draft found', 'error'); return; }
+    try {
+      applyDraft(JSON.parse(raw));
+      toast('Draft loaded', 'success');
+    } catch {
+      toast('Draft file is not readable', 'error');
+    }
+  }
+
+  function clearDraft() {
+    if (!confirm('Clear saved draft?')) return;
+    localStorage.removeItem(DRAFT_KEY);
+    toast('Draft cleared', 'success');
+  }
+
+  async function fetchFullBill(id) {
+    let b = allBills.find(x => x.id === id || String(x.id) === String(id));
+    if (!b || b.items === undefined) {
+      const {data, error} = await sb.from('bills').select('*').eq('id', id).single();
+      if (error) throw error;
+      b = data;
+      const idx = allBills.findIndex(x => x.id === b.id);
+      if (idx >= 0) allBills[idx] = b; else allBills.unshift(b);
+    }
+    return b;
+  }
+
+  async function exportBackup() {
+    showLoader('Preparing backup...');
+    try {
+      const [billRes, custRes] = await Promise.all([
+        sb.from('bills').select('*').order('bill_no', {ascending:true}),
+        sb.from('customers').select('*').order('name', {ascending:true}),
+      ]);
+      if (billRes.error) throw billRes.error;
+      if (custRes.error) throw custRes.error;
+      const backup = {
+        app: 'Kagdiyal Holidays Billing',
+        version: 2,
+        exported_at: new Date().toISOString(),
+        bills: billRes.data || [],
+        customers: custRes.data || [],
+        local: {
+          vehicles: readStoredList(VEHICLE_KEY),
+          routes: readStoredList(ROUTE_KEY),
+          rates: readRateMap(),
+        },
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KH_Backup_${todayISO()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Backup downloaded', 'success');
+    } catch (err) {
+      toast('Backup failed: ' + err.message, 'error');
+    } finally {
+      hideLoader();
+    }
+  }
+
+  function pickRestore() {
+    $('kh-backup-file')?.click();
+  }
+
+  async function restoreBackup(file) {
+    if (!file) return;
+    if (!confirm('Restore this backup into Supabase? Existing matching IDs will be updated.')) return;
+    showLoader('Restoring backup...');
+    try {
+      const backup = JSON.parse(await file.text());
+      if (!backup || (!Array.isArray(backup.bills) && !Array.isArray(backup.customers))) throw new Error('Invalid backup file');
+      if (backup.local) {
+        if (Array.isArray(backup.local.vehicles)) localStorage.setItem(VEHICLE_KEY, JSON.stringify(backup.local.vehicles));
+        if (Array.isArray(backup.local.routes)) localStorage.setItem(ROUTE_KEY, JSON.stringify(backup.local.routes));
+        if (backup.local.rates) localStorage.setItem(RATE_KEY, JSON.stringify(backup.local.rates));
+      }
+      if (backup.customers?.length) {
+        const {error} = await sb.from('customers').upsert(backup.customers, {onConflict:'id'});
+        if (error) throw error;
+      }
+      if (backup.bills?.length) {
+        const bills = backup.bills.map(b => { const {_upiQR, ...clean} = b; return clean; });
+        const {error} = await sb.from('bills').upsert(bills, {onConflict:'id'});
+        if (error) throw error;
+      }
+      refreshDatalists();
+      await Promise.all([loadCusts(), loadBills(), fetchNextBillNo()]);
+      loadDash();
+      toast('Backup restored', 'success');
+    } catch (err) {
+      toast('Restore failed: ' + err.message, 'error');
+    } finally {
+      hideLoader();
+    }
+  }
+
+  function backupDeleted(type, record) {
+    try {
+      const list = JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
+      list.unshift({type, record, deleted_at: new Date().toISOString()});
+      localStorage.setItem(DELETED_KEY, JSON.stringify(list.slice(0, 25)));
+    } catch {}
+  }
+
+  async function restoreLastDeleted() {
+    const list = JSON.parse(localStorage.getItem(DELETED_KEY) || '[]');
+    const item = list.shift();
+    if (!item) { toast('No local deleted backup found', 'error'); return; }
+    if (!confirm(`Restore last deleted ${item.type}?`)) return;
+    try {
+      const table = item.type === 'bill' ? 'bills' : 'customers';
+      const {error} = await sb.from(table).insert([item.record]);
+      if (error) throw error;
+      localStorage.setItem(DELETED_KEY, JSON.stringify(list));
+      await Promise.all([loadCusts(), loadBills(), fetchNextBillNo()]);
+      loadDash();
+      toast('Restored', 'success');
+    } catch (err) {
+      toast('Restore failed: ' + err.message, 'error');
+    }
+  }
+
+  function safeBillFilters() {
+    const q = ($('srch')?.value || '').toLowerCase();
+    const status = $('hist-status')?.value || '';
+    const type = $('hist-type')?.value || '';
+    const from = $('hist-from')?.value || '';
+    const to = $('hist-to')?.value || '';
+    return allBills.filter(b => {
+      const hay = [b.cust_name, b.cust_guest, b.cust_phone, b.bill_no].join(' ').toLowerCase();
+      const due = displayDue(b) > 0;
+      if (q && !hay.includes(q)) return false;
+      if (status === 'due' && !due) return false;
+      if (status === 'paid' && due) return false;
+      if (type === 'gst' && !b.is_gst) return false;
+      if (type === 'nongst' && b.is_gst) return false;
+      if (from && String(b.bill_date || '') < from) return false;
+      if (to && String(b.bill_date || '') > to) return false;
+      return true;
+    });
+  }
+
+  window.renderBills = function(bills) {
+    const list = $('bills-list');
+    if (!list) return;
+    if (!bills.length) { list.innerHTML = '<div class="empty">No bills yet.</div>'; return; }
+    list.innerHTML = `
+      <table class="hist-table">
+        <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Paid</th><th>Balance</th><th>Type</th><th class="no-print" style="min-width:230px;">Actions</th></tr></thead>
+        <tbody>${bills.map(b => {
+          const due = displayDue(b);
+          return `<tr style="cursor:pointer;" ondblclick="viewBill(${b.id})">
+            <td data-label="Bill No"><strong>#${esc(b.bill_no)}</strong></td>
+            <td data-label="Date">${esc(b.bill_date || '-')}</td>
+            <td data-label="Customer">${esc(b.cust_name || '-')}${b.cust_guest ? '<br><small style="color:#888">'+esc(b.cust_guest)+'</small>' : ''}${b.cust_phone ? '<br><small style="color:#2E75B6;">Phone: '+esc(b.cust_phone)+'</small>' : ''}</td>
+            <td data-label="Grand Total">${fmt(b.grand_total || 0)}</td>
+            <td data-label="Paid">${fmt(paidTotal(b))}</td>
+            <td data-label="Balance">${due > 0 ? `<span class="badge badge-unpaid">${fmt(due)}</span>` : '<span class="badge badge-paid">PAID</span>'}</td>
+            <td data-label="Type"><span class="badge" style="background:${b.is_gst ? '#dbeafe' : '#f3f4f6'};color:${b.is_gst ? '#1e40af' : '#374151'}">${b.is_gst ? 'GST' : 'Non-GST'}</span></td>
+            <td class="no-print" style="white-space:nowrap;">
+              <button class="btn btn-sm" style="background:#dbeafe;color:#1e40af;margin-right:3px;" onclick="viewBill(${b.id})">View</button>
+              <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;margin-right:3px;" onclick="editBill(${b.id})">Edit</button>
+              <button class="btn btn-sm" style="background:#ecfeff;color:#155e75;margin-right:3px;" onclick="KHPlus.duplicateBill(${b.id})">Copy</button>
+              <button class="btn btn-sm" style="background:#dcfce7;color:#166534;margin-right:3px;" onclick="KHPlus.openPaymentModal(${b.id})">Pay</button>
+              <button class="btn btn-sm" style="background:#dcfce7;color:#166534;margin-right:3px;" onclick="reprintBill(${b.id})">Print</button>
+              <button class="btn btn-sm" style="background:#25D366;color:#fff;margin-right:3px;" onclick="reprintAndShareWA(${b.id})">WA</button>
+              <button class="btn btn-sm" style="background:#fee2e2;color:#c00;" onclick="delBill(${b.id})">Del</button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+  };
+
+  window.filterBills = function() {
+    renderBills(safeBillFilters());
+  };
+
+  window.renderDues = function(dues) {
+    const list = $('dues-list');
+    if (!list) return;
+    if (!dues.length) { list.innerHTML = '<div class="empty">No outstanding dues!</div>'; return; }
+    list.innerHTML = `
+      <table class="hist-table">
+        <thead><tr><th>Bill No.</th><th>Date</th><th>Customer</th><th>Grand Total</th><th>Balance Due</th><th class="no-print" style="min-width:180px;">Actions</th></tr></thead>
+        <tbody>${dues.map(b => `<tr>
+          <td data-label="Bill No"><strong>#${esc(b.bill_no)}</strong></td>
+          <td data-label="Date">${esc(b.bill_date || '-')}</td>
+          <td data-label="Customer">${esc(b.cust_name || '-')}${b.cust_guest ? '<br><small style="color:#888">'+esc(b.cust_guest)+'</small>' : ''}${b.cust_phone ? '<br><small style="color:#2E75B6;">Phone: '+esc(b.cust_phone)+'</small>' : ''}</td>
+          <td data-label="Grand Total">${fmt(b.grand_total || 0)}</td>
+          <td data-label="Balance Due"><span class="badge badge-unpaid" style="font-size:13px;">${fmt(displayDue(b))}</span></td>
+          <td class="no-print" style="white-space:nowrap;">
+            <button class="btn btn-sm" style="background:#dbeafe;color:#1e40af;margin-right:3px;" onclick="viewBill(${b.id})">View</button>
+            <button class="btn btn-sm" style="background:#dcfce7;color:#166534;margin-right:3px;" onclick="KHPlus.openPaymentModal(${b.id})">Pay</button>
+            <button class="btn btn-sm" style="background:#25D366;color:#fff;margin-right:3px;" onclick="reprintAndShareWA(${b.id})">WA</button>
+            <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;" onclick="editBill(${b.id})">Edit</button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+  };
+
+  window.filterDues = function() {
+    const q = ($('due-srch')?.value || '').toLowerCase();
+    const from = $('due-from')?.value || '';
+    const to = $('due-to')?.value || '';
+    renderDues(allDues.filter(b => {
+      const hay = [b.cust_name, b.cust_guest, b.cust_phone, b.bill_no].join(' ').toLowerCase();
+      if (q && !hay.includes(q)) return false;
+      if (from && String(b.bill_date || '') < from) return false;
+      if (to && String(b.bill_date || '') > to) return false;
+      return true;
+    }));
+  };
+
+  const originalLoadDues = window.loadDues;
+  window.loadDues = async function() {
+    await originalLoadDues();
+    allDues = allDues.map(b => allBills.find(x => x.id === b.id) || b).filter(b => displayDue(b) > 0);
+    const total = allDues.reduce((s, b) => s + displayDue(b), 0);
+    if ($('due-count')) $('due-count').textContent = allDues.length;
+    if ($('due-total')) $('due-total').textContent = fmt(total);
+    if ($('due-oldest')) $('due-oldest').textContent = allDues.length ? `#${allDues[0].bill_no} - ${allDues[0].bill_date || '?'}` : 'None';
+    renderDues(allDues);
+  };
+
+  window.renderCustList = function() {
+    const sel = $('cust-select');
+    if (sel) sel.innerHTML = '<option value="">-- Select --</option>' + allCusts.map(c => `<option value="${esc(c.id)}">${esc(c.name)}${c.company_name ? ' (' + esc(c.company_name) + ')' : ''}</option>`).join('');
+    const list = $('cust-list');
+    if (!list) return;
+    if (!allCusts.length) { list.innerHTML = '<div class="empty">No customers yet.</div>'; return; }
+    list.innerHTML = `
+      <table class="hist-table">
+        <thead><tr><th>Name</th><th>Company</th><th>Address</th><th>GSTIN</th><th>Phone</th><th class="no-print"></th></tr></thead>
+        <tbody>${allCusts.map(c => `<tr>
+          <td data-label="Name">${esc(c.name || '-')}</td>
+          <td data-label="Company">${esc(c.company_name || '-')}</td>
+          <td data-label="Address">${esc(c.address || '-')}</td>
+          <td data-label="GSTIN">${esc(c.gstin || '-')}</td>
+          <td data-label="Phone">${esc(c.phone || '-')}</td>
+          <td class="no-print" style="white-space:nowrap;">
+            <button class="btn btn-sm" style="background:#fef9c3;color:#854d0e;margin-right:3px;" onclick="KHPlus.editCustomer(${c.id})">Edit</button>
+            <button class="btn btn-sm" style="background:#fee2e2;color:#c00" onclick="delCust(${c.id})">Del</button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+  };
+
+  async function saveCustomerPlus() {
+    const id = $('cust-edit-id')?.value;
+    const nm = $('nc-name')?.value.trim();
+    if (!nm) { toast('Name required', 'error'); return; }
+    const payload = {
+      name: nm,
+      company_name: $('nc-co')?.value || '',
+      address: $('nc-addr')?.value || '',
+      gstin: $('nc-gstin')?.value || '',
+      phone: $('nc-ph')?.value || '',
+      email: $('nc-em')?.value || '',
+    };
+    const result = id
+      ? await sb.from('customers').update(payload).eq('id', id).select().single()
+      : await sb.from('customers').insert([payload]).select().single();
+    if (result.error) { toast('Error: ' + result.error.message, 'error'); return; }
+    const saved = result.data;
+    const idx = allCusts.findIndex(c => String(c.id) === String(saved.id));
+    if (idx >= 0) allCusts[idx] = saved; else allCusts.push(saved);
+    allCusts.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+    cancelCustomerEdit();
+    renderCustList();
+    toast(id ? 'Customer updated' : 'Customer added', 'success');
+  }
+
+  function editCustomer(id) {
+    const c = allCusts.find(x => String(x.id) === String(id));
+    if (!c) return;
+    if ($('cust-edit-id')) $('cust-edit-id').value = c.id;
+    if ($('nc-name')) $('nc-name').value = c.name || '';
+    if ($('nc-co')) $('nc-co').value = c.company_name || '';
+    if ($('nc-addr')) $('nc-addr').value = c.address || '';
+    if ($('nc-gstin')) $('nc-gstin').value = c.gstin || '';
+    if ($('nc-ph')) $('nc-ph').value = c.phone || '';
+    if ($('nc-em')) $('nc-em').value = c.email || '';
+    const btn = document.querySelector('button[onclick="saveCustomer()"]');
+    if (btn) btn.textContent = 'Save Customer';
+    if ($('cust-cancel-edit')) $('cust-cancel-edit').style.display = 'inline-flex';
+    $('nc-name')?.focus();
+  }
+
+  function cancelCustomerEdit() {
+    if ($('cust-edit-id')) $('cust-edit-id').value = '';
+    ['nc-name','nc-co','nc-addr','nc-gstin','nc-ph','nc-em'].forEach(id => { if ($(id)) $(id).value = ''; });
+    const btn = document.querySelector('button[onclick="saveCustomer()"]');
+    if (btn) btn.textContent = '+ Add Customer';
+    if ($('cust-cancel-edit')) $('cust-cancel-edit').style.display = 'none';
+  }
+
+  window.saveCustomer = saveCustomerPlus;
+
+  const originalDelBill = window.delBill;
+  window.delBill = async function(id) {
+    if (!confirm('Delete this bill? A local restore copy will be kept.')) return;
+    try { backupDeleted('bill', await fetchFullBill(id)); } catch {}
+    const {error} = await sb.from('bills').delete().eq('id', id);
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    allBills = allBills.filter(x => String(x.id) !== String(id));
+    renderBills(allBills);
+    loadDash();
+    toast('Deleted. Local restore copy saved.', 'success');
+  };
+
+  const originalDelCust = window.delCust;
+  window.delCust = async function(id) {
+    if (!confirm('Delete customer? A local restore copy will be kept.')) return;
+    const c = allCusts.find(x => String(x.id) === String(id));
+    if (c) backupDeleted('customer', c);
+    const {error} = await sb.from('customers').delete().eq('id', id);
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    allCusts = allCusts.filter(x => String(x.id) !== String(id));
+    renderCustList();
+    toast('Deleted. Local restore copy saved.', 'success');
+  };
+
+  async function openPaymentModal(id) {
+    try {
+      const b = await fetchFullBill(id);
+      $('payment-bill-id').value = b.id;
+      $('payment-title').textContent = `Payment - Bill #${b.bill_no}`;
+      $('payment-summary').innerHTML = `
+        <div class="stat-card"><h3>Grand Total</h3><div class="val">${fmt(b.grand_total || 0)}</div></div>
+        <div class="stat-card"><h3>Total Paid</h3><div class="val">${fmt(paidTotal(b))}</div></div>
+        <div class="stat-card" style="border-left-color:var(--rd)"><h3>Balance</h3><div class="val">${fmt(displayDue(b))}</div></div>`;
+      $('payment-history').innerHTML = paymentRowsHTML(b, true);
+      $('pay-date').value = todayISO();
+      $('pay-amount').value = displayDue(b) || '';
+      $('pay-note').value = '';
+      $('payment-modal').classList.add('open');
+    } catch (err) {
+      toast('Payment modal failed: ' + err.message, 'error');
+    }
+  }
+
+  async function updatePaymentData(b, payments) {
+    const bk = bankFromBill(b);
+    bk.payments = payments;
+    const updated = {...b, bank_details: bk};
+    const due = computedDue(updated);
+    const {error} = await sb.from('bills').update({bank_details: bk, balance_due: due}).eq('id', b.id);
+    if (error) throw error;
+    b.bank_details = bk;
+    b.balance_due = due;
+    const idx = allBills.findIndex(x => String(x.id) === String(b.id));
+    if (idx >= 0) allBills[idx] = b;
+    return b;
+  }
+
+  async function savePayment() {
+    const id = $('payment-bill-id')?.value;
+    const amount = money($('pay-amount')?.value);
+    if (!id || amount <= 0) { toast('Payment amount required', 'error'); return; }
+    try {
+      const b = await fetchFullBill(id);
+      const payments = paymentsOf(b);
+      payments.push({
+        date: $('pay-date')?.value || todayISO(),
+        amount,
+        mode: $('pay-mode')?.value || 'Payment',
+        note: $('pay-note')?.value || '',
+        created_at: new Date().toISOString(),
+      });
+      await updatePaymentData(b, payments);
+      renderBills(allBills);
+      if ($('dues-list')) await loadDues();
+      loadDash();
+      await openPaymentModal(id);
+      toast('Payment saved', 'success');
+    } catch (err) {
+      toast('Payment failed: ' + err.message, 'error');
+    }
+  }
+
+  async function deletePayment(idx) {
+    const id = $('payment-bill-id')?.value;
+    if (!id || !confirm('Delete this payment entry?')) return;
+    try {
+      const b = await fetchFullBill(id);
+      const payments = paymentsOf(b).filter((_, i) => i !== idx);
+      await updatePaymentData(b, payments);
+      renderBills(allBills);
+      if ($('dues-list')) await loadDues();
+      loadDash();
+      await openPaymentModal(id);
+      toast('Payment deleted', 'success');
+    } catch (err) {
+      toast('Delete failed: ' + err.message, 'error');
+    }
+  }
+
+  window.markPaid = async function(id) {
+    if (!confirm('Record full balance payment for this bill?')) return;
+    try {
+      const b = await fetchFullBill(id);
+      const due = displayDue(b);
+      if (due <= 0) { toast('Already paid', 'success'); return; }
+      const payments = paymentsOf(b);
+      payments.push({date: todayISO(), amount: due, mode: 'Settlement', note: 'Marked fully paid', created_at: new Date().toISOString()});
+      await updatePaymentData(b, payments);
+      await loadDues();
+      renderBills(allBills);
+      loadDash();
+      toast('Marked as paid with payment entry', 'success');
+    } catch (err) {
+      toast('Error: ' + err.message, 'error');
+    }
+  };
+
+  window.viewBill = async function(id) {
+    let b;
+    try { b = await fetchFullBill(id); } catch { return; }
+    viewingBillId = id;
+    $('view-modal-title').textContent = `Bill #${b.bill_no} - ${b.cust_name || ''}`;
+    const items = b.items || [];
+    const bk = bankFromBill(b);
+    const due = displayDue(b);
+    $('view-modal-body').innerHTML = `
+      <div class="bd-top">
+        <div class="bd-co"><h2>KAGDIYAL HOLIDAYS</h2><p>24X7 PAN INDIA TOUR AND LOCAL RENTAL IN DELHI</p><p style="font-size:8px;color:#aad4f5;margin-top:4px;">GSTIN: 07OGUPS2098E1ZF | PAN: OGUPS2098E</p></div>
+        <div class="bd-meta">
+          <div class="bd-row"><span class="lbl">Bill No.</span><span class="val">#${esc(b.bill_no)}</span></div>
+          <div class="bd-row"><span class="lbl">Date</span><span class="val">${esc(b.bill_date || '-')}</span></div>
+          <div class="bd-row"><span class="lbl">Type</span><span class="val">${b.is_gst ? 'GST Bill' : 'Non-GST Bill'}</span></div>
+        </div>
+      </div>
+      <div class="bd-cust">
+        <div class="bd-row"><span class="lbl">Company</span><span class="val">${esc(b.cust_name || '-')}</span></div>
+        <div class="bd-row"><span class="lbl">Guest</span><span class="val">${esc(b.cust_guest || '-')}</span></div>
+        <div class="bd-row"><span class="lbl">Address</span><span class="val">${esc(b.cust_address || '-')}</span></div>
+        <div class="bd-row"><span class="lbl">GSTIN</span><span class="val">${esc(b.cust_gstin || '-')}</span></div>
+        <div class="bd-row"><span class="lbl">State Code</span><span class="val">${esc(b.cust_state || '-')}</span></div>
+        <div class="bd-row"><span class="lbl">Booked By</span><span class="val">${esc(b.cust_booked || '-')}</span></div>
+        ${b.cust_phone ? `<div class="bd-row"><span class="lbl">Phone</span><span class="val">${esc(b.cust_phone)}</span></div>` : ''}
+      </div>
+      <table class="bd-items">
+        <thead><tr><th>Date</th><th>Vehicle</th><th class="tl">Route / Duty</th><th>Rate</th><th>Qty</th><th>Amount</th></tr></thead>
+        <tbody>${items.map(i => `<tr>
+          <td>${esc(i.date || '-')}</td><td>${esc(i.vehicle || '-')}</td><td class="tl">${esc(i.desc || '-')}</td>
+          <td>${fmt(i.rate)}</td><td>${esc(i.qty || '')}</td><td style="font-weight:700;">${fmt(i.amount)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+      <div class="bd-summary">
+        <div class="bd-bank">
+          <h4>Bank Details</h4>
+          <div class="bd-row"><span class="lbl">Bank</span><span class="val">${esc(bk.bank)}</span></div>
+          <div class="bd-row"><span class="lbl">A/C</span><span class="val">${esc(bk.acno)}</span></div>
+          <div class="bd-row"><span class="lbl">A/C Name</span><span class="val">${esc(bk.name)}</span></div>
+          <div class="bd-row"><span class="lbl">Branch</span><span class="val">${esc(bk.branch)}</span></div>
+          <div class="bd-row"><span class="lbl">IFSC</span><span class="val">${esc(bk.ifsc)}</span></div>
+          ${bk.upi ? `<div class="bd-row"><span class="lbl">UPI</span><span class="val">${esc(bk.upi)}</span></div><div id="view-upi-qr" class="kh-qr-box" style="display:flex;"></div>` : ''}
+        </div>
+        <div class="bd-tax">
+          <div class="bd-tax-row"><span>Subtotal</span><strong>${fmt(b.subtotal)}</strong></div>
+          ${b.is_gst && b.cgst ? `<div class="bd-tax-row"><span>CGST (${esc(b.cgst_pct)}%)</span><span>${fmt(b.cgst)}</span></div>` : ''}
+          ${b.is_gst && b.sgst ? `<div class="bd-tax-row"><span>SGST (${esc(b.sgst_pct)}%)</span><span>${fmt(b.sgst)}</span></div>` : ''}
+          ${b.is_gst && b.igst ? `<div class="bd-tax-row"><span>IGST (${esc(b.igst_pct)}%)</span><span>${fmt(b.igst)}</span></div>` : ''}
+          ${b.extra_charges ? `<div class="bd-tax-row"><span>Pkg / Toll / State Tax</span><span>${fmt(b.extra_charges)}</span></div>` : ''}
+          ${getBillDriverTA(b) ? `<div class="bd-tax-row"><span>Driver TA</span><span>${fmt(getBillDriverTA(b))}</span></div>` : ''}
+          ${b.advance ? `<div class="bd-tax-row"><span>Advance</span><span>${fmt(b.advance)}</span></div>` : ''}
+          ${paymentsTotal(b) ? `<div class="bd-tax-row"><span>Other Payments</span><span>${fmt(paymentsTotal(b))}</span></div>` : ''}
+          <div class="bd-total"><span>GRAND TOTAL</span><span>${fmt(b.grand_total)}</span></div>
+          <div class="bd-balance"><span>Balance Due</span><span>${due > 0 ? fmt(due) : 'PAID'}</span></div>
+          <button class="btn btn-sm btn-success no-print" style="margin-top:8px;" onclick="KHPlus.openPaymentModal(${b.id})">Record Payment</button>
+        </div>
+      </div>
+      <div class="bd-words">Rs. ${n2w(Math.round(b.grand_total || 0))} Only /-</div>
+      <div class="kh-panel"><strong style="font-size:12px;color:var(--bd);">Payment History</strong>${paymentRowsHTML(b)}</div>`;
+    $('view-modal').classList.add('open');
+    if (bk.upi) renderQR('view-upi-qr', buildUPIUri(due || money(b.grand_total), `Bill ${b.bill_no}`, bk));
+  };
+
+  const originalBuildBillHTML = window.buildBillHTML;
+  window.buildBillHTML = function(b) {
+    let html = originalBuildBillHTML(b);
+    const bk = bankFromBill(b);
+    const paymentSummary = `
+      ${paymentsTotal(b) ? `<div class="tr2"><span>(-) Payments</span><span>${fmt(paymentsTotal(b))}</span></div>` : ''}
+    `;
+    html = html.replace('<div class="gtotal"><span>GRAND TOTAL</span>', paymentSummary + '<div class="gtotal"><span>GRAND TOTAL</span>');
+    if (bk.upi) {
+      const qr = b._upiQR ? `<div style="margin-top:6pt;display:flex;gap:6pt;align-items:center;"><img src="${b._upiQR}" style="width:56pt;height:56pt;border:1px solid #ddd;border-radius:4pt;"><div><strong>UPI</strong><br>${esc(bk.upi)}</div></div>` : `<div class="br"><span class="l">UPI</span><span class="v">${esc(bk.upi)}</span></div>`;
+      html = html.replace('</div>\n    <div class="tax">', qr + '</div>\n    <div class="tax">');
+    }
+    return html;
+  };
+
+  const originalGenerateBillPDF = window.generateBillPDF;
+  window.generateBillPDF = async function(b) {
+    await enrichBillQR(b);
+    return originalGenerateBillPDF(b);
+  };
+
+  const originalReprintBill = window.reprintBill;
+  window.reprintBill = async function(id) {
+    try { await enrichBillQR(await fetchFullBill(id)); } catch {}
+    return originalReprintBill(id);
+  };
+
+  async function duplicateBill(id) {
+    try {
+      const b = await fetchFullBill(id);
+      const tab = [...document.querySelectorAll('.nav-tab')].find(x => x.getAttribute('onclick')?.includes('new-bill'));
+      showPage('new-bill', tab);
+      await fetchNextBillNo();
+      applyDraft({
+        isGST: b.is_gst,
+        bill_date: todayISO(),
+        cust_name: b.cust_name,
+        cust_address: b.cust_address,
+        cust_gstin: b.cust_gstin,
+        cust_guest: b.cust_guest,
+        cust_state: b.cust_state,
+        cust_booked: b.cust_booked,
+        cust_phone: b.cust_phone,
+        cgst_pct: b.cgst_pct,
+        sgst_pct: b.sgst_pct,
+        igst_pct: b.igst_pct,
+        extra_charges: b.extra_charges,
+        driver_ta: getBillDriverTA(b),
+        advance: 0,
+        bank: bankFromBill(b),
+        items: b.items || [],
+      });
+      toast('Bill copied as new draft', 'success');
+    } catch (err) {
+      toast('Copy failed: ' + err.message, 'error');
+    }
+  }
+
+  const originalEditBill = window.editBill;
+  window.editBill = async function(id) {
+    await originalEditBill(id);
+    try {
+      const b = await fetchFullBill(id);
+      const bk = bankFromBill(b);
+      if ($('ebk-upi')) $('ebk-upi').value = bk.upi || '';
+    } catch {}
+  };
+
+  const originalSaveEditBill = window.saveEditBill;
+  window.saveEditBill = async function() {
+    const id = $('edit-id')?.value;
+    let previousPayments = [];
+    let upi = $('ebk-upi')?.value.trim() || '';
+    try {
+      const oldBill = await fetchFullBill(id);
+      previousPayments = paymentsOf(oldBill);
+      if (!upi) upi = bankFromBill(oldBill).upi || '';
+    } catch {}
+    await originalSaveEditBill();
+    if (!id) return;
+    try {
+      const updated = await fetchFullBill(id);
+      const bk = bankFromBill(updated);
+      bk.upi = upi;
+      if (previousPayments.length) bk.payments = previousPayments;
+      const fixed = {...updated, bank_details: bk};
+      const due = computedDue(fixed);
+      const {error} = await sb.from('bills').update({bank_details: bk, balance_due: due}).eq('id', id);
+      if (error) throw error;
+      updated.bank_details = bk;
+      updated.balance_due = due;
+      const idx = allBills.findIndex(x => String(x.id) === String(id));
+      if (idx >= 0) allBills[idx] = updated;
+      renderBills(allBills);
+      loadDash();
+    } catch (err) {
+      toast('Saved, but payment/UPI preservation failed: ' + err.message, 'error');
+    }
+  };
+
+  const originalFetchNextBillNo = window.fetchNextBillNo;
+  window.fetchNextBillNo = async function() {
+    const el = $('bill-no');
+    try {
+      const {data, error} = await sb.rpc('peek_next_bill_no');
+      if (!error && data && el) {
+        el.readOnly = true;
+        el.style.background = '#eef2f7';
+        el.style.color = '#555';
+        el.title = 'Auto-set from Supabase sequence';
+        el.value = data;
+        const btn = $('bill-no-edit-btn');
+        if (btn) { btn.textContent = 'Edit'; btn.title = 'Click to edit manually'; btn.style.background = '#fff'; }
+        return;
+      }
+    } catch {}
+    return originalFetchNextBillNo();
+  };
+
+  const originalSaveBill = window.saveBill;
+  window.saveBill = async function() {
+    const billNoEl = $('bill-no');
+    try {
+      if (typeof billNoManual !== 'undefined' && !billNoManual) {
+        const {data, error} = await sb.rpc('reserve_bill_no');
+        if (!error && data && billNoEl) billNoEl.value = data;
+      }
+      const billNo = parseInt(billNoEl?.value || '0', 10);
+      if (billNo) {
+        const {data, error} = await sb.from('bills').select('id').eq('bill_no', billNo).maybeSingle();
+        if (!error && data) {
+          toast(`Bill #${billNo} already exists. Next number loaded.`, 'error');
+          await fetchNextBillNo();
+          return;
+        }
+      }
+    } catch {}
+    await originalSaveBill();
+    localStorage.removeItem(DRAFT_KEY);
+  };
+
+  const originalCalc = window.calc;
+  window.calc = function() {
+    const result = originalCalc();
+    renderCurrentUPIQR();
+    autoSaveDraft();
+    return result;
+  };
+
+  function validateGSTInput(input) {
+    const gst = input.value.trim().toUpperCase();
+    input.value = gst;
+    if (!gst) return;
+    const ok = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gst);
+    if (!ok) toast('GSTIN format looks incorrect', 'error');
+    if (ok && input.id === 'cg' && $('cs') && !$('cs').value) $('cs').value = gst.slice(0, 2);
+    if (ok && input.id === 'edit-cg' && $('edit-cs') && !$('edit-cs').value) $('edit-cs').value = gst.slice(0, 2);
+  }
+
+  function attachEvents() {
+    document.addEventListener('change', e => {
+      if (e.target.matches('.r-rte,.er-rte')) applyKnownRate(e.target);
+      if (['cg','edit-cg','nc-gstin'].includes(e.target.id)) validateGSTInput(e.target);
+    });
+    document.addEventListener('input', e => {
+      if (e.target.closest('#page-new-bill')) autoSaveDraft();
+      if (['bk-upi','bk-bank','bk-name','bk-acno','bk-ifsc','adv','extra','driver-ta'].includes(e.target.id)) renderCurrentUPIQR();
+    });
+  }
+
+  function initAfterOriginalLoad() {
+    injectBaseUI();
+    refreshDatalists();
+    attachEvents();
+    loadSavedBankPlus();
+    if (localStorage.getItem(DRAFT_KEY)) toast('Saved draft available', '');
+  }
+
+  injectBaseUI();
+  window.getCurrentBank = getCurrentBankPlus;
+  window.loadSavedBank = loadSavedBankPlus;
+  window.buildBankDetailsWithDriverTA = buildBankDetailsPlus;
+  window.updateWA = updateWAPlus;
+
+  const originalOnload = window.onload;
+  window.onload = async function(ev) {
+    try {
+      if (originalOnload) await originalOnload.call(this, ev);
+    } finally {
+      initAfterOriginalLoad();
+    }
+  };
+
+  window.KHPlus = {
+    saveDraft, loadDraft, clearDraft,
+    exportBackup, pickRestore, restoreBackup, restoreLastDeleted,
+    saveMasters, addRateMaster,
+    openPaymentModal, savePayment, deletePayment,
+    editCustomer, cancelCustomerEdit,
+    duplicateBill,
+  };
+})();
+</script>
+
+<script>
 /* ── PWA Service Worker Registration ── */
-if ('serviceWorker' in navigator) {
+const canUseServiceWorker = location.protocol === 'http:' || location.protocol === 'https:';
+if (canUseServiceWorker && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    const swUrl = new URL('sw.js', location.href).href;
+    navigator.serviceWorker.register(swUrl)
       .then(reg => console.log('SW registered:', reg.scope))
       .catch(err => console.log('SW failed:', err));
   });
@@ -2015,5 +3267,14 @@ function installPWA() {
   });
 }
 </script>
+
+<div id="global-loader" class="global-loader hidden">
+  <div class="loader-box">
+    <div class="loader-spinner"></div>
+    <div id="loader-text">Loading...</div>
+  </div>
+</div>
+
 </body>
 </html>
+
